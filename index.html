@@ -580,6 +580,20 @@ details.done-sec[open] .done-arrow{transform:rotate(90deg);}
 *::-webkit-scrollbar{width:5px;height:5px;}
 *::-webkit-scrollbar-track{background:transparent;}
 *::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+/* Edit title button */
+.btn-edit-title{background:none;border:none;cursor:pointer;font-size:11px;padding:0 1px;opacity:0;line-height:1;color:var(--muted);}
+.task-card:hover .btn-edit-title{opacity:.5;}
+.btn-edit-title:hover{opacity:1!important;}
+/* Task links */
+.links-area{margin-bottom:6px;}
+.task-link-item{display:flex;align-items:center;gap:4px;margin-bottom:2px;}
+.task-link-a{font-size:11px;color:var(--blue);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.task-link-a:hover{text-decoration:underline;}
+.task-link-del{background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer;padding:0 2px;opacity:0;}
+.task-link-item:hover .task-link-del{opacity:1;}
+.link-inp{width:100%;background:transparent;border:none;border-bottom:1px dashed var(--border2);outline:none;font-size:11px;color:var(--dark2);padding:2px 0;}
+.link-inp::placeholder{color:var(--faint);font-style:italic;}
+.link-inp:focus{border-bottom-color:var(--blue);}
 </style>
 </head>
 <body>
@@ -923,6 +937,7 @@ function migrateData(s){
     if(!t.attachments) t.attachments=[];
     if(!t.subtasks) t.subtasks=[];
     if(t.link===undefined) t.link=null;
+    if(!t.links) t.links=[];
   });
   if(!s.quicklinks) s.quicklinks=[];
   s.quicklinks.forEach(l=>{
@@ -1174,6 +1189,7 @@ function cardHtml(t){
   const titleDisp=t.link
     ?`<div class="title-display ${noteClass}" data-action="expand" data-id="${t.id}">${formatWithTimes(t.title)}<span class="link-icon" data-action="open-link" data-link="${esc(t.link)}" data-id="${t.id}" title="Otwórz link">↗</span></div>`
     :`<div class="title-display ${noteClass}" data-action="expand" data-id="${t.id}">${formatWithTimes(t.title)}</div>`;
+  const linksHtml=(t.links||[]).map(l=>`<div class="task-link-item"><a class="task-link-a" href="${esc(l.url)}" target="_blank" rel="noopener" title="${esc(l.url)}">${esc(truncUrl(l.url))}</a><button class="task-link-del" data-action="del-link" data-link-id="${l.id}" data-id="${t.id}">✕</button></div>`).join('');
   return`
 <div class="task-card ${t.priority?'priority':''} ${isExp?'expanded':''} ${hasNote?'has-note-content':''}" data-id="${t.id}" data-status="${t.status}">
   <div class="card-top">
@@ -1183,13 +1199,15 @@ function cardHtml(t){
     <div class="title-wrap">
       ${titleDisp}
       <textarea class="card-title" data-f="title" data-id="${t.id}" rows="1" spellcheck="false">${esc(t.title)}</textarea>
+      <button class="btn-edit-title" data-action="edit-title" data-id="${t.id}" title="Edytuj tytuł">✏️</button>
     </div>
   </div>
   ${subs.length?`<div class="card-subs-always">${subsItemsHtml}</div>`:''}
   <div class="card-expand">
-    <div class="subtasks-area"><input class="subtask-inp" data-id="${t.id}" placeholder="+ Dodaj podzadanie..."></div>
     <div class="card-note-view" data-id="${t.id}">${formatNoteLinks(t.note||'')}</div>
     <textarea class="card-note" data-f="note" data-id="${t.id}" rows="1" placeholder="Notatka..." spellcheck="false">${esc(t.note||'')}</textarea>
+    <div class="links-area">${linksHtml}<input class="link-inp" data-id="${t.id}" placeholder="+ Dodaj link (https://...)"></div>
+    <div class="subtasks-area"><input class="subtask-inp" data-id="${t.id}" placeholder="+ Dodaj podzadanie..."></div>
   </div>
   ${atts.length?`<div class="card-attach-always">${attHtml}</div>`:''}
   <div class="attach-hint">Upuść plik lub wklej (Ctrl+V) aby dodać załącznik</div>
@@ -1664,7 +1682,7 @@ function saveNewTask(){
   const order=state.tasks.filter(t=>t.game===game&&t.weekKey===wk).length;
   const newId=uid();
   lastCreatedId=newId;
-  pushTask({id:newId,game,title,date,note,status:'active',priority:false,weekKey:wk,order,attachments:[],subtasks:[],link:pendingTaskLink||null});
+  pushTask({id:newId,game,title,date,note,status:'active',priority:false,weekKey:wk,order,attachments:[],subtasks:[],link:pendingTaskLink||null,links:[]});
   setAtLinkBadge(null);
   bootstrap.Modal.getInstance(document.getElementById('addTaskModal')).hide();
 }
@@ -1762,6 +1780,24 @@ function deleteSubtask(taskId,subId){
   const t=taskById(taskId);if(!t)return;
   t.subtasks=t.subtasks.filter(x=>x.id!==subId);
   patchTask(taskId,{subtasks:t.subtasks});renderApp();
+}
+function truncUrl(url){
+  try{const u=new URL(url);return u.hostname+(u.pathname.length>1?u.pathname:'');}
+  catch{return url.slice(0,40);}
+}
+function addLink(id,url){
+  const t=taskById(id);if(!t)return;
+  url=url.trim();if(!url)return;
+  if(!/^https?:\/\//i.test(url)) url='https://'+url;
+  if(!t.links)t.links=[];
+  t.links.push({id:uid(),url,label:''});
+  patchTask(id,{links:t.links});renderApp();
+  requestAnimationFrame(()=>{const inp=document.querySelector(`.link-inp[data-id="${id}"]`);if(inp)inp.focus();});
+}
+function delLink(id,linkId){
+  const t=taskById(id);if(!t)return;
+  t.links=(t.links||[]).filter(l=>l.id!==linkId);
+  patchTask(id,{links:t.links});renderApp();
 }
 function addSubtask(taskId,title){
   const t=taskById(taskId);if(!t||!title.trim())return;
@@ -1894,6 +1930,16 @@ function loadGhConfig(){
   try{const c=JSON.parse(localStorage.getItem(GH_CONFIG_KEY)||'null');if(c)ghConfig={...ghConfig,...c};}catch(_){}
 }
 function persistGhConfig(){localStorage.setItem(GH_CONFIG_KEY,JSON.stringify(ghConfig));}
+function applyHashConfig(){
+  const hash=location.hash.slice(1);if(!hash)return;
+  const p=new URLSearchParams(hash);
+  let changed=false;
+  if(p.get('token')){ghConfig.token=p.get('token');changed=true;}
+  if(p.get('owner')){ghConfig.owner=p.get('owner');changed=true;}
+  if(p.get('repo')){ghConfig.repo=p.get('repo');changed=true;}
+  if(p.get('path')){ghConfig.path=p.get('path');changed=true;}
+  if(changed){persistGhConfig();history.replaceState(null,'',location.pathname+location.search);}
+}
 
 function setGhDot(s){
   const dot=document.getElementById('ghDot');if(!dot)return;
@@ -2294,8 +2340,9 @@ function initListeners(){
       if(link) window.open(link,'_blank');
       return;
     }
+    else if(action==='edit-title') startEditTaskTitle(id);
     else if(action==='expand'){
-      if(e.detail>=2)return; // let dblclick handler take over
+      if(e.detail>=2)return;
       const card=document.querySelector(`.task-card[data-id="${id}"]`);if(!card)return;
       const opening=!card.classList.contains('expanded');
       card.classList.toggle('expanded',opening);
@@ -2337,6 +2384,10 @@ function initListeners(){
       const subId=e.target.dataset.subtaskId||e.target.closest('[data-subtask-id]')?.dataset.subtaskId;
       if(subId) deleteSubtask(id,subId);
     }
+    else if(action==='del-link'){
+      const linkId=e.target.dataset.linkId||e.target.closest('[data-link-id]')?.dataset.linkId;
+      if(linkId) delLink(id,linkId);
+    }
   });
 
   // Board click → note-view clicked (not on a link) → enter note edit mode
@@ -2351,6 +2402,11 @@ function initListeners(){
 
   // Board keydown → Enter in subtask-inp / date-input / sub-date-inp
   document.getElementById('board').addEventListener('keydown',e=>{
+    if(e.target.classList.contains('link-inp')){
+      if(e.key==='Enter'){e.preventDefault();const url=e.target.value.trim();if(url){addLink(e.target.dataset.id,url);e.target.value='';}}
+      if(e.key==='Escape'){e.target.value='';e.target.blur();}
+      return;
+    }
     if(e.target.classList.contains('subtask-inp')){
       if(e.key==='Enter'){e.preventDefault();addSubtask(e.target.dataset.id,e.target.value);e.target.value='';}
       if(e.key==='Escape'){e.target.value='';e.target.blur();}
@@ -2573,6 +2629,7 @@ function initListeners(){
 async function init(){
   currentWeekKey=isoWeekKey(new Date());
   loadGhConfig();
+  applyHashConfig();
 
   // Try GitHub sync first
   if(ghConfig.owner&&ghConfig.repo){
