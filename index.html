@@ -768,6 +768,7 @@ details.done-sec[open] .done-arrow{transform:rotate(90deg);}
     <div class="gh-modal-btns">
       <span class="gh-status-msg" id="ghStatusMsg"></span>
       <button id="ghModalDisconnect" class="btn btn-sm btn-secondary">Rozłącz</button>
+      <button id="ghModalPush" class="btn btn-sm btn-secondary" title="Wyślij obecne dane na GitHub (nie pobiera z GitHub)">⬆ Wgraj lokalne</button>
       <button id="ghModalClose" class="btn btn-sm btn-secondary">Anuluj</button>
       <button id="ghModalSave" class="btn btn-sm btn-primary">Połącz</button>
     </div>
@@ -848,10 +849,10 @@ async function saveToFile(){
   }catch(e){console.warn('File save failed:',e);}
 }
 
-function save(){
+function save(ghImmediate=false){
   localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
   if(fileHandle) saveToFile();
-  scheduleGhSave();
+  scheduleGhSave(ghImmediate);
 }
 
 async function loadFromFile(h){
@@ -1034,9 +1035,9 @@ function fmtWeek(wk){
 // TASK UTILS
 // ═══════════════════════════════════════
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
-function patchTask(id,patch){const i=state.tasks.findIndex(t=>t.id===id);if(i>=0){Object.assign(state.tasks[i],patch);save();}}
-function removeTask(id){state.tasks=state.tasks.filter(t=>t.id!==id);save();}
-function pushTask(task){state.tasks.push(task);save();}
+function patchTask(id,patch){const i=state.tasks.findIndex(t=>t.id===id);if(i>=0){Object.assign(state.tasks[i],patch);save(true);}}
+function removeTask(id){state.tasks=state.tasks.filter(t=>t.id!==id);save(true);}
+function pushTask(task){state.tasks.push(task);save(true);}
 function taskById(id){return state.tasks.find(t=>t.id===id);}
 
 // ═══════════════════════════════════════
@@ -1966,10 +1967,11 @@ async function saveToGitHub(){
   }catch(e){console.warn('GH save:',e);setGhDot('error');}
 }
 
-function scheduleGhSave(){
+function scheduleGhSave(immediate=false){
   if(!ghConfig.token||!ghConfig.owner||!ghConfig.repo) return;
   clearTimeout(ghSaveTimer);
-  ghSaveTimer=setTimeout(saveToGitHub,3000);
+  if(immediate) saveToGitHub();
+  else ghSaveTimer=setTimeout(saveToGitHub,800);
 }
 
 function openGhModal(){
@@ -2015,6 +2017,27 @@ function disconnectGitHub(){
   persistGhConfig();
   setGhDot('off');
   closeGhModal();
+}
+
+async function pushLocalToGitHub(){
+  const owner=document.getElementById('ghOwner').value.trim();
+  const repo=document.getElementById('ghRepo').value.trim();
+  const path=document.getElementById('ghPath').value.trim()||'gamesture-tasks.json';
+  const token=document.getElementById('ghToken').value.trim();
+  if(!owner||!repo||!token){document.getElementById('ghStatusMsg').textContent='⚠ Podaj owner, repo i token.';return;}
+  ghConfig={owner,repo,path,token};
+  persistGhConfig();
+  document.getElementById('ghStatusMsg').textContent='Wysyłanie lokalnych danych...';
+  // Fetch current SHA to avoid 409
+  const headers={'Accept':'application/vnd.github.v3+json','Authorization':`token ${token}`};
+  try{
+    const r=await fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${path}`,{headers});
+    if(r.ok){const d=await r.json();ghSha=d.sha;}
+    else ghSha=null;
+  }catch(_){ghSha=null;}
+  await saveToGitHub();
+  document.getElementById('ghStatusMsg').textContent='✅ Dane wysłane na GitHub!';
+  setGhDot('synced');
 }
 
 // ═══════════════════════════════════════
@@ -2124,6 +2147,7 @@ function initListeners(){
   document.getElementById('ghModalSave').addEventListener('click',connectGitHub);
   document.getElementById('ghModalClose').addEventListener('click',closeGhModal);
   document.getElementById('ghModalDisconnect').addEventListener('click',disconnectGitHub);
+  document.getElementById('ghModalPush').addEventListener('click',pushLocalToGitHub);
   document.getElementById('ghModal').addEventListener('click',e=>{if(e.target.id==='ghModal')closeGhModal();});
   document.getElementById('ghToken').addEventListener('keydown',e=>{if(e.key==='Enter')connectGitHub();if(e.key==='Escape')closeGhModal();});
   document.getElementById('globalQlBar').addEventListener('click',e=>{
