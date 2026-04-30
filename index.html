@@ -875,7 +875,7 @@ async function connectExistingFile(){
   try{
     const [h]=await window.showOpenFilePicker({types:[{description:'JSON',accept:{'application/json':['.json']}}],excludeAcceptAllOption:true});
     fileHandle=h;await idbSaveHandle(h);
-    try{state=await loadFromFile(h);}catch{save();} // new/empty file
+    try{state=await loadFromFile(h);save();}catch{save();} // save always so data persists to localStorage
     updateFileUI();renderApp();
   }catch(_){}
 }
@@ -1939,7 +1939,7 @@ async function loadFromGitHub(){
 }
 
 async function saveToGitHub(){
-  if(!ghConfig.owner||!ghConfig.repo||!ghConfig.path||!ghConfig.token) return;
+  if(!ghConfig.owner||!ghConfig.repo||!ghConfig.path||!ghConfig.token) return false;
   setGhDot('syncing');
   try{
     const content=_b64encode(JSON.stringify(state,null,2));
@@ -1954,17 +1954,18 @@ async function saveToGitHub(){
       const data=await res.json();
       ghSha=data.content.sha;
       setGhDot('synced');
+      return true;
     }else{
       const err=await res.json().catch(()=>({}));
-      console.warn('GH save error:',err);
+      console.warn('GH save error:',res.status,err);
       if(res.status===409){
-        // Conflict — re-fetch SHA and retry once
         const r2=await fetch(`https://api.github.com/repos/${encodeURIComponent(ghConfig.owner)}/${encodeURIComponent(ghConfig.repo)}/contents/${ghConfig.path}`,{headers:{'Authorization':`token ${ghConfig.token}`}});
         if(r2.ok){const d2=await r2.json();ghSha=d2.sha;scheduleGhSave();}
       }
       setGhDot('error');
+      return false;
     }
-  }catch(e){console.warn('GH save:',e);setGhDot('error');}
+  }catch(e){console.warn('GH save:',e);setGhDot('error');return false;}
 }
 
 function scheduleGhSave(immediate=false){
@@ -2035,9 +2036,12 @@ async function pushLocalToGitHub(){
     if(r.ok){const d=await r.json();ghSha=d.sha;}
     else ghSha=null;
   }catch(_){ghSha=null;}
-  await saveToGitHub();
-  document.getElementById('ghStatusMsg').textContent='✅ Dane wysłane na GitHub!';
-  setGhDot('synced');
+  const ok=await saveToGitHub();
+  if(ok){
+    document.getElementById('ghStatusMsg').textContent=`✅ Wysłano ${state.tasks?.length||0} tasków na GitHub!`;
+  }else{
+    document.getElementById('ghStatusMsg').textContent='❌ Błąd wysyłania — sprawdź token (scope: repo lub public_repo).';
+  }
 }
 
 // ═══════════════════════════════════════
