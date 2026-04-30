@@ -1,0 +1,2378 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📋 Task Manager — Gamesture</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<style>
+/* ══════════════════════════════════
+   DARK MODE — Tokyo Night palette
+   ══════════════════════════════════ */
+:root{
+  --bg:#1a1b26;
+  --col:#24283b;
+  --col-gen:#0d0e15;
+  --border:#292e42;
+  --border2:#3b3f5c;
+  --muted:#565f89;
+  --faint:#3b3f5c;
+  --dark:#c0caf5;
+  --dark2:#a9b1d6;
+  --blue:#7aa2f7;
+  --green:#9ece6a;
+  --red:#f7768e;
+  --orange:#ff9e64;
+  --gold:#e0af68;
+  --card:#1f2335;
+  --card2:#1a1e30;
+}
+
+*{box-sizing:border-box;}
+html,body{height:100%;margin:0;}
+body{
+  background:var(--bg);
+  color:var(--dark);
+  font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
+  font-size:13px;
+  display:grid;
+  grid-template-rows:auto 1fr auto;
+  grid-template-columns:1fr minmax(280px,33%);
+  height:100vh;
+  overflow:hidden;
+}
+
+/* ── Bootstrap overrides ── */
+.form-control,.form-select,textarea.form-control{
+  background:#16161e!important;color:var(--dark)!important;
+  border-color:var(--border2)!important;
+}
+.form-control:focus,.form-select:focus{
+  background:#16161e!important;color:var(--dark)!important;
+  border-color:var(--blue)!important;
+  box-shadow:0 0 0 .2rem rgba(122,162,247,.2)!important;
+}
+.form-control::placeholder{color:var(--muted)!important;}
+.modal-content{background:var(--card)!important;color:var(--dark)!important;border-color:var(--border2)!important;}
+.modal-header,.modal-footer{border-color:var(--border2)!important;}
+.modal-title,.form-label{color:var(--dark)!important;}
+.btn-close{filter:invert(1) brightness(.7);}
+.btn-outline-secondary{color:var(--dark2)!important;border-color:var(--border2)!important;}
+.btn-outline-secondary:hover{background:var(--border2)!important;color:var(--dark)!important;border-color:var(--border2)!important;}
+.btn-outline-primary{color:var(--blue)!important;border-color:var(--blue)!important;}
+.btn-outline-primary:hover{background:rgba(122,162,247,.15)!important;}
+.btn-primary{background:#3d59a1!important;border-color:#3d59a1!important;}
+.btn-primary:hover{background:#2f4782!important;border-color:#2f4782!important;}
+.btn-secondary{background:#292e42!important;border-color:#292e42!important;color:var(--dark)!important;}
+
+/* ── HEADER ── */
+.app-hdr{
+  grid-column:1/-1;grid-row:1;
+  background:#16161e;border-bottom:1px solid var(--border);
+  padding:8px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  box-shadow:0 1px 6px rgba(0,0,0,.4);z-index:100;
+}
+.app-title{font-size:16px;font-weight:700;color:var(--dark);white-space:nowrap;}
+.week-nav{display:flex;align-items:center;gap:5px;}
+.week-lbl{font-size:12px;font-weight:600;color:var(--dark);min-width:190px;text-align:center;}
+
+/* ── BOARD ── */
+.board{
+  grid-column:1;grid-row:2;
+  display:flex;gap:12px;padding:14px;
+  overflow-x:auto;overflow-y:auto;
+  align-items:flex-start;
+}
+.board::-webkit-scrollbar{height:6px;}
+.board::-webkit-scrollbar-track{background:var(--bg);}
+.board::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+/* ── ONGOING STRIP ── */
+.ong-strip{
+  grid-column:1;grid-row:3;
+  background:#16161e;border-top:2px solid var(--orange);z-index:50;min-height:46px;
+}
+.ong-hdr{
+  display:flex;align-items:center;gap:8px;padding:6px 14px;
+  cursor:pointer;user-select:none;
+}
+.ong-hdr:hover{background:rgba(255,158,100,.06);}
+.ong-hdr-title{font-size:12px;font-weight:700;color:var(--orange);}
+.ong-cnt{font-size:10px;background:rgba(255,158,100,.2);color:var(--orange);border-radius:8px;padding:0 6px;font-weight:700;}
+.ong-toggle{margin-left:auto;font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;padding:0 4px;}
+.ong-body{
+  padding:6px 14px 10px;
+  max-height:220px;overflow-y:auto;
+}
+.ong-body::-webkit-scrollbar{height:4px;}
+.ong-body::-webkit-scrollbar-track{background:transparent;}
+.ong-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+.ong-body.collapsed{display:none;}
+.ong-empty{font-size:12px;color:var(--muted);font-style:italic;padding:4px 0;width:100%;}
+#ongList{width:100%;display:flex;flex-wrap:wrap;gap:8px;min-height:48px;align-content:flex-start;}
+#ongList.drag-over{
+  background:rgba(255,158,100,.08);border-radius:8px;
+  outline:2px dashed rgba(255,158,100,.35);min-height:60px;
+}
+
+/* ── ONGOING CARD ── */
+.ong-card{
+  background:var(--card);border-radius:8px;
+  border:1px solid var(--border);border-left:4px solid var(--orange);
+  padding:7px 10px;min-width:190px;max-width:280px;
+  box-shadow:0 2px 8px rgba(0,0,0,.3);
+  display:flex;flex-direction:column;gap:5px;
+}
+.ong-card.priority{background:#1a1e0e;border-left-color:var(--gold);}
+.ong-top{display:flex;align-items:center;gap:5px;}
+.ong-game-badge{
+  font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;
+  color:#fff;display:flex;align-items:center;gap:3px;flex-shrink:0;
+}
+.ong-game-badge img{width:18px;height:18px;border-radius:3px;object-fit:cover;}
+.ong-game-badge .badge-ltr{width:18px;height:18px;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;background:rgba(255,255,255,.2);}
+.ong-title{font-size:12px;font-weight:500;color:var(--dark);flex:1;line-height:1.4;}
+.ong-foot{display:flex;align-items:center;gap:4px;}
+.ong-drag{color:var(--faint);cursor:grab;font-size:14px;user-select:none;flex-shrink:0;}
+.ong-drag:hover{color:var(--muted);}
+.ong-drag:active{cursor:grabbing;}
+.ong-return{font-size:11px;background:none;border:1px solid var(--border2);border-radius:3px;padding:1px 5px;cursor:pointer;color:var(--muted);}
+.ong-return:hover{background:var(--border);color:var(--dark);}
+.ong-cb{
+  width:15px;height:15px;border:2px solid var(--border2);border-radius:3px;
+  flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  background:transparent;transition:all .1s;
+}
+.ong-cb:hover{border-color:var(--green);}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  grid-column:2;grid-row:2/4;
+  background:#16161e;border-left:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.sb-cal{
+  flex:0 0 auto;max-height:42%;
+  display:flex;flex-direction:column;overflow:hidden;
+  border-bottom:1px solid var(--border);padding:10px 12px 8px;
+}
+.sb-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px;}
+.sb-title-toggle{cursor:pointer;user-select:none;display:flex;align-items:center;gap:5px;}
+.sb-title-toggle:hover{color:var(--dark2);}
+.sb-arrow{font-size:10px;transition:transform .18s;margin-left:auto;}
+.sb-cal.collapsed .sb-arrow{transform:rotate(-90deg);}
+.sb-cal.collapsed .cal-scroll{display:none;}
+.sb-cal.collapsed{max-height:none;}
+.cal-scroll{flex:1;overflow-y:auto;}
+.cal-scroll::-webkit-scrollbar{width:4px;}
+.cal-scroll::-webkit-scrollbar-track{background:transparent;}
+.cal-scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+.cal-day-hdr{
+  font-size:10px;font-weight:700;color:var(--muted);
+  padding:4px 0 2px;border-bottom:1px solid var(--border);
+  margin-bottom:3px;margin-top:6px;
+}
+.cal-day-hdr:first-child{margin-top:0;}
+.cal-day-hdr.today-hdr{color:var(--blue);}
+.cal-day-hdr.late-hdr{color:var(--red);}
+.cal-entry.late-entry .cal-ttl{color:var(--red);opacity:.85;}
+.cal-entry.late-entry{opacity:.9;}
+.cal-day-hdr.holiday-hdr{color:#c97070;}
+.cal-entry{
+  display:flex;align-items:center;gap:5px;
+  padding:4px 5px;border-radius:4px;cursor:pointer;
+  transition:background .1s;
+}
+.cal-entry:hover{background:var(--col);}
+.cal-entry.prio-entry{background:rgba(224,175,104,.1);border-left:2px solid var(--gold);padding-left:4px;}
+.cal-entry.prio-entry:hover{background:rgba(224,175,104,.18);}
+.cal-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.cal-ttl{font-size:11px;color:var(--dark2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cal-entry.prio-entry .cal-ttl{font-weight:600;color:var(--gold);}
+.cal-star{font-size:10px;flex-shrink:0;}
+.cal-day-hdr.this-week-hdr{color:var(--blue);}
+.cal-entry.this-week-entry:not(.prio-entry){background:rgba(122,162,247,.07);}
+.cal-entry.this-week-entry:not(.prio-entry):hover{background:rgba(122,162,247,.14);}
+.cal-entry.this-week-entry:not(.prio-entry) .cal-ttl{color:var(--dark);}
+/* ── GAME SCHEDULE TABLE ── */
+.sb-tge{flex:0 0 auto;border-bottom:1px solid var(--border);padding:8px 12px;display:flex;flex-direction:column;max-height:38%;}
+.sb-tge.collapsed .tge-body{display:none;}
+.sb-tge.collapsed{max-height:none;}
+.sb-tge.collapsed .sb-arrow{transform:rotate(-90deg);}
+.tge-body{flex:1;overflow:auto;}
+.tge-table{border-collapse:collapse;font-size:12px;white-space:nowrap;}
+.tge-table th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);padding:4px 6px 4px 2px;border-bottom:1px solid var(--border);text-align:left;}
+.tge-table td{padding:3px 6px 3px 2px;color:var(--dark2);border-bottom:1px solid rgba(255,255,255,.04);}
+.tge-table tr:last-child td{border-bottom:none;}
+.tge-ev{font-weight:600;color:var(--dark);padding-right:8px;}
+.tge-merged{color:var(--border2);font-size:10px;letter-spacing:.02em;}
+.tge-arr{color:var(--muted);font-size:12px;font-weight:700;line-height:1;}
+.tge-time{font-size:12px;}
+.sb-notes{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:10px 12px 8px;min-height:32px;}
+.sb-notes.collapsed .notes-scroll{display:none;}
+.sb-notes.collapsed{flex:0 0 auto;}
+.sb-notes.collapsed .sb-arrow{transform:rotate(-90deg);}
+.notes-scroll{flex:1;overflow-y:auto;padding-right:2px;}
+.notes-scroll::-webkit-scrollbar{width:4px;}
+.notes-scroll::-webkit-scrollbar-track{background:transparent;}
+.notes-scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+/* ── NOTE CARD ── */
+.note-card{
+  border-radius:8px;padding:7px 9px;margin-bottom:7px;
+  border:1px solid rgba(255,255,255,.06);box-shadow:0 2px 6px rgba(0,0,0,.3);
+}
+.note-top{display:flex;align-items:center;gap:4px;margin-bottom:4px;}
+.note-drag{color:rgba(255,255,255,.2);cursor:grab;font-size:13px;user-select:none;flex-shrink:0;}
+.note-drag:hover{color:rgba(255,255,255,.4);}
+.note-drag:active{cursor:grabbing;}
+.note-colors{display:flex;gap:3px;flex:1;}
+.note-cdot{
+  width:14px;height:14px;border-radius:3px;cursor:pointer;
+  border:1px solid rgba(255,255,255,.25);transition:transform .1s;flex-shrink:0;
+}
+.note-cdot:hover{transform:scale(1.3);border-color:rgba(255,255,255,.5);}
+.note-cdot.active{transform:scale(1.15);border-width:2px;border-color:rgba(255,255,255,.7);}
+.note-del{font-size:11px;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);padding:0 2px;opacity:0;margin-left:auto;}
+.note-card:hover .note-del{opacity:1;}
+.note-view{
+  font-size:12px;line-height:1.5;color:rgba(192,202,245,.85);word-break:break-word;white-space:pre-wrap;
+  cursor:text;min-height:1em;
+}
+.note-view.hidden{display:none;}
+.note-ta{
+  display:none;width:100%;border:none;outline:none;background:transparent;
+  resize:none;font-size:12px;line-height:1.5;padding:0;min-height:30px;color:rgba(192,202,245,.85);
+}
+.note-ta.editing{display:block;}
+.note-card.note-empty .note-view{display:none;}
+.note-card.note-empty .note-ta{display:block;}
+.add-note-btn{
+  width:100%;background:transparent;border:1px dashed var(--border2);
+  border-radius:6px;padding:5px;font-size:11px;cursor:pointer;
+  color:var(--muted);margin-top:2px;
+}
+.add-note-btn:hover{background:var(--border);color:var(--dark);}
+
+/* ── GAME COLUMN ── */
+.game-col{min-width:280px;max-width:300px;background:var(--col);border-radius:12px;padding:10px;flex-shrink:0;}
+.game-col.general-col{background:var(--col-gen);border:1px dashed var(--muted);}
+.col-hdr{
+  display:flex;align-items:center;gap:8px;
+  padding:2px 2px 8px;border-bottom:1px solid var(--border);margin-bottom:8px;
+}
+.col-icon{width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0;cursor:pointer;border:1px solid var(--border);}
+.col-icon-ph{
+  width:40px;height:40px;border-radius:8px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;font-weight:800;color:#fff;cursor:pointer;
+  border:1px solid rgba(255,255,255,.1);
+}
+.col-name{font-weight:600;font-size:13px;color:var(--dark);flex:1;cursor:pointer;border-radius:3px;padding:1px 3px;}
+.col-name:hover{background:var(--border);}
+.col-del{opacity:0;color:var(--muted);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:3px;}
+.game-col:hover .col-del{opacity:.4;}
+.col-del:hover{opacity:1!important;color:var(--red);}
+.icon-file-inp{display:none;}
+
+/* ── SECTION ── */
+.sec-lbl{
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);
+  padding:4px 2px 2px;display:flex;align-items:center;justify-content:space-between;
+}
+.sec-cnt{font-size:10px;background:rgba(255,255,255,.08);border-radius:8px;padding:0 5px;font-weight:700;}
+.task-list{min-height:28px;}
+.empty-msg{font-size:11px;color:var(--faint);text-align:center;padding:8px 0;font-style:italic;pointer-events:none;}
+
+/* ── TASK CARD ── */
+.task-card{
+  background:var(--card);border-radius:8px;
+  padding:7px 9px 6px 12px;margin-bottom:6px;
+  border-left:4px solid var(--border2);
+  box-shadow:0 1px 4px rgba(0,0,0,.35);
+  transition:box-shadow .12s;position:relative;
+}
+.task-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.5);}
+.task-card[data-status="done"]{opacity:.45;border-left-color:var(--green);}
+.task-card.priority{border-left-color:var(--gold);background:linear-gradient(to right,rgba(224,175,104,.08),var(--card));}
+.task-card.sortable-ghost{opacity:.25;background:#2d3050;}
+.task-card.sortable-chosen{box-shadow:0 8px 24px rgba(0,0,0,.6);transform:rotate(1.5deg);}
+.task-card.hl{animation:pulse .35s ease 2;}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 3px var(--blue);}50%{box-shadow:0 0 0 0 var(--blue);}}
+
+/* Card layout */
+.card-top{display:flex;align-items:flex-start;gap:4px;}
+.drag-handle{color:var(--faint);cursor:grab;font-size:14px;line-height:1;margin-top:2px;flex-shrink:0;user-select:none;}
+.drag-handle:hover{color:var(--muted);}
+.drag-handle:active{cursor:grabbing;}
+
+/* Checkbox */
+.cb{
+  width:15px;height:15px;border:2px solid var(--border2);border-radius:3px;
+  flex-shrink:0;cursor:pointer;margin-top:2px;
+  display:flex;align-items:center;justify-content:center;
+  background:transparent;transition:all .1s;
+}
+.cb:hover{border-color:var(--green);}
+.cb.done{background:var(--green);border-color:var(--green);}
+.cb.done::after{content:'✓';color:#1a1b26;font-size:10px;font-weight:700;line-height:1;}
+
+/* Date area */
+.card-date{flex-shrink:0;display:flex;align-items:center;margin-top:1px;}
+.date-chip{
+  font-size:10.5px;font-weight:600;border-radius:3px;padding:2px 5px;
+  background:var(--border);color:var(--dark2);cursor:pointer;white-space:nowrap;
+  border:1px solid transparent;
+}
+.date-chip:hover{background:var(--border2);color:var(--dark);}
+.date-chip.today{background:rgba(122,162,247,.2);color:var(--blue);font-weight:700;}
+.date-chip.late{background:rgba(247,118,142,.15);color:var(--red);}
+.date-chip.holiday{background:rgba(180,60,60,.18);color:#c97070;}
+.date-input{
+  font-size:11px;border:1px solid var(--border2);border-radius:4px;
+  padding:1px 4px;color:var(--dark);background:var(--bg);cursor:text;width:110px;
+}
+.date-input:focus{border-color:var(--blue);outline:none;}
+.date-input::placeholder{color:var(--faint);}
+.btn-add-date{
+  font-size:14px;background:none;border:none;cursor:pointer;
+  opacity:.55;padding:0;line-height:1;
+}
+.btn-add-date:hover{opacity:.9;}
+
+/* Title */
+.title-wrap{flex:1;min-width:0;}
+.title-display{
+  font-size:12px;font-weight:500;line-height:1.45;color:var(--dark);
+  cursor:pointer;word-break:break-word;min-height:18px;
+}
+.title-display:hover{opacity:.82;}
+.title-link{color:var(--blue)!important;cursor:pointer;}
+.title-link:hover{text-decoration:underline;opacity:1!important;}
+[data-status="done"] .title-display{text-decoration:line-through;color:var(--muted);}
+.title-display.has-note{text-decoration:underline;text-decoration-style:dotted;text-decoration-color:var(--muted);}
+.link-icon{font-size:10px;opacity:.6;margin-left:3px;cursor:pointer;color:var(--blue);}
+.link-icon:hover{opacity:1;}
+.time-hl{color:var(--orange);font-weight:700;}
+.card-title{
+  width:100%;
+  font-size:12px;font-weight:500;line-height:1.45;color:var(--dark);
+  border:none;outline:none;background:transparent;
+  resize:none;padding:0;overflow:hidden;min-height:18px;display:none;
+}
+.card-title:focus{background:rgba(255,255,255,.04);border-radius:3px;padding:1px 4px;}
+.task-card.editing .title-display{display:none;}
+.task-card.editing .card-title{display:block!important;}
+[data-status="done"] .card-title{text-decoration:line-through;color:var(--muted);}
+
+/* Actions (bottom-right footer) */
+.card-footer{
+  display:flex;gap:1px;align-items:center;justify-content:flex-end;
+  margin-top:2px;
+  opacity:0;transition:opacity .12s;
+}
+.task-card:hover .card-footer{opacity:1;}
+.task-card.priority .card-footer{opacity:1;}
+.btn-prio{background:none;border:none;cursor:pointer;font-size:13px;padding:0 1px;opacity:.7;line-height:1;color:var(--dark2);}
+.btn-prio:hover{color:var(--gold);opacity:1;}
+.btn-prio.on{color:var(--gold);opacity:1;}
+.btn-ong{font-size:13px;background:none;border:none;cursor:pointer;padding:0 1px;opacity:.3;line-height:1;}
+.btn-ong:hover{opacity:1;}
+.del-btn{font-size:12px;background:none;border:none;cursor:pointer;color:var(--muted);padding:0 2px;line-height:1;}
+.del-btn:hover{color:var(--red);}
+.btn-dup{font-size:13px;background:none;border:none;cursor:pointer;color:var(--muted);padding:0 2px;line-height:1;opacity:.7;}
+.btn-dup:hover{color:var(--blue);opacity:1;}
+
+/* Expandable section (note only) */
+.card-expand{display:none;padding-left:37px;margin-top:4px;}
+.task-card.expanded .card-expand{display:block;}
+/* Subtasks always visible */
+.card-subs-always{padding-left:28px;margin-top:3px;}
+.sub-drag{color:transparent;cursor:grab;font-size:11px;line-height:1;flex-shrink:0;user-select:none;padding:0 1px;}
+.subtask:hover .sub-drag{color:var(--faint);}
+.sub-drag:hover{color:var(--muted)!important;}
+.sub-drag:active{cursor:grabbing;}
+.subtask.sortable-ghost{opacity:.25;}
+.subtask.sortable-chosen{background:var(--border);border-radius:4px;}
+/* Attachments always visible */
+.card-attach-always{padding-left:37px;margin-top:5px;display:flex;flex-wrap:wrap;gap:5px;align-items:flex-end;}
+/* Note */
+.card-note-view{
+  display:none;font-size:11px;color:var(--muted);word-break:break-word;white-space:pre-wrap;
+  cursor:text;margin-bottom:2px;
+}
+.task-card.expanded.has-note-content .card-note-view{display:block;}
+.task-card.note-editing .card-note-view{display:none!important;}
+.note-link{color:var(--blue);text-decoration:underline;word-break:break-all;cursor:pointer;}
+.note-link:hover{opacity:.8;}
+.card-note{
+  display:none;font-size:11px;color:var(--muted);
+  width:100%;border:none;outline:none;background:transparent;
+  resize:none;padding:0;overflow:hidden;margin-bottom:6px;
+}
+.task-card.expanded .card-note{display:block;}
+.task-card.expanded.has-note-content .card-note{display:none;}
+.task-card.note-editing .card-note{display:block!important;}
+.card-note:focus{background:rgba(255,255,255,.04);border-radius:3px;padding:1px 4px;}
+.card-note::placeholder{color:var(--faint);font-style:italic;}
+/* Attachments */
+.attach-area{margin-top:5px;display:flex;flex-wrap:wrap;gap:5px;align-items:flex-end;}
+.attach-item{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.attach-thumb{width:56px;height:56px;object-fit:cover;border-radius:4px;border:1px solid var(--border2);cursor:pointer;}
+.attach-link{font-size:10px;color:var(--blue);background:var(--border);padding:2px 5px;border-radius:3px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:none;display:block;}
+.attach-del{position:absolute;top:-4px;right:-4px;width:14px;height:14px;background:var(--red);border-radius:50%;font-size:8px;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .1s;border:none;}
+.attach-item:hover .attach-del{opacity:1;}
+.btn-add-attach{font-size:11px;background:none;border:1px dashed var(--border2);border-radius:4px;padding:2px 7px;cursor:pointer;color:var(--muted);flex-shrink:0;}
+.btn-add-attach:hover{border-color:var(--muted);color:var(--dark);}
+.attach-file-inp{display:none;}
+/* Drag-over drop zone */
+.task-card.drag-over{outline:2px dashed var(--blue);background:rgba(122,162,247,.07);}
+.attach-hint{display:none;font-size:10px;color:var(--faint);margin-top:4px;font-style:italic;padding-left:37px;}
+.task-card.drag-over .attach-hint{display:block;}
+/* Subtasks */
+.subtasks-area{margin-bottom:4px;}
+.subtask{display:flex;align-items:center;gap:5px;padding:2px 0;}
+.subtask-cb{width:13px;height:13px;border:2px solid var(--border2);border-radius:2px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;background:transparent;transition:all .1s;}
+.subtask-cb:hover{border-color:var(--green);}
+.subtask-cb.done{background:var(--green);border-color:var(--green);}
+.subtask-cb.done::after{content:'✓';color:#1a1b26;font-size:8px;font-weight:700;line-height:1;}
+.subtask-title{font-size:11px;color:var(--dark2);flex:1;cursor:default;}
+.subtask-title.done-text{text-decoration:line-through;color:var(--muted);}
+.subtask-del{background:none;border:none;cursor:pointer;color:var(--faint);font-size:10px;padding:0 2px;opacity:0;line-height:1;}
+.subtask:hover .subtask-del{opacity:1;}
+.subtask-del:hover{color:var(--red);}
+.subtask-inp{width:100%;background:transparent;border:none;border-bottom:1px dashed var(--border2);outline:none;font-size:11px;color:var(--dark2);padding:2px 0;margin-top:2px;}
+.subtask-inp::placeholder{color:var(--faint);font-style:italic;}
+.subtask-inp:focus{border-bottom-color:var(--blue);}
+/* Subtask date */
+.sub-date-chip{font-size:9.5px;padding:1px 4px;border-radius:3px;background:var(--border);color:var(--dark2);cursor:pointer;white-space:nowrap;flex-shrink:0;}
+.sub-date-chip:hover{background:var(--border2);}
+.sub-date-chip.today{background:rgba(122,162,247,.2);color:var(--blue);}
+.sub-date-chip.late{background:rgba(247,118,142,.15);color:var(--red);}
+.sub-date-chip.holiday{background:rgba(180,60,60,.18);color:#c97070;}
+.sub-date-btn{background:none;border:none;cursor:pointer;font-size:10px;padding:0 1px;opacity:0;line-height:1;flex-shrink:0;}
+.subtask:hover .sub-date-btn{opacity:.45;}
+.sub-date-btn:hover{opacity:1!important;}
+.sub-date-inp{font-size:10px;border:none;border-bottom:1px solid var(--border2);background:transparent;color:var(--dark2);outline:none;padding:1px 2px;width:76px;flex-shrink:0;}
+.sub-date-inp:focus{border-bottom-color:var(--blue);}
+.sub-date-inp[style*="display:none"]{width:0;padding:0;border:none;}
+.subtask-inp:focus{border-bottom-color:var(--blue);}
+/* Quick links bar */
+.ql-item{position:relative;display:inline-flex;align-items:center;}
+.ql-icon{font-size:20px;cursor:pointer;text-decoration:none;opacity:.75;transition:transform .12s,opacity .12s;line-height:1;}
+.ql-icon:hover{opacity:1;transform:scale(1.2);}
+.ql-item-del{position:absolute;top:-5px;right:-5px;background:var(--bg);border:1px solid var(--border2);border-radius:50%;width:14px;height:14px;font-size:8px;cursor:pointer;display:none;align-items:center;justify-content:center;color:var(--muted);padding:0;line-height:1;}
+#globalQlBar.edit-mode .ql-item-del{display:flex;}
+.ql-item-del:hover{color:var(--red);}
+.ql-item-edit{position:absolute;top:-5px;left:-5px;background:var(--bg);border:1px solid var(--border2);border-radius:50%;width:14px;height:14px;font-size:8px;cursor:pointer;display:none;align-items:center;justify-content:center;color:var(--muted);padding:0;line-height:1;}
+#globalQlBar.edit-mode .ql-item-edit{display:flex;}
+.ql-item-edit:hover{color:var(--blue);}
+.ql-add{background:none;border:1px dashed var(--border2);border-radius:4px;color:var(--muted);font-size:15px;line-height:1;cursor:pointer;padding:1px 6px;opacity:.5;transition:opacity .1s;}
+.ql-add:hover{opacity:1;color:var(--blue);border-color:var(--blue);}
+.ql-edit-mode-btn,.ql-json-btn{background:none;border:1px solid var(--border2);border-radius:3px;color:var(--muted);font-size:9px;font-weight:600;letter-spacing:.04em;cursor:pointer;padding:1px 5px;opacity:.5;transition:opacity .1s,color .1s,border-color .1s;}
+.ql-edit-mode-btn:hover,.ql-json-btn:hover{opacity:1;}
+#globalQlBar.edit-mode .ql-edit-mode-btn{color:var(--green);border-color:var(--green);opacity:1;}
+/* Gallery */
+.sb-gallery{flex:0 0 auto;border-top:1px solid var(--border);padding:8px 12px;display:flex;flex-direction:column;max-height:38%;}
+.sb-gallery.collapsed .gallery-body{display:none;}
+.sb-gallery.collapsed{max-height:none;}
+.sb-gallery.collapsed .sb-arrow{transform:rotate(-90deg);}
+.gallery-body{flex:1;overflow-y:auto;}
+.gallery-drop{min-height:36px;border:1.5px dashed var(--border2);border-radius:6px;cursor:pointer;padding:8px;transition:border-color .12s,background .12s;}
+.gallery-drop.drag-over{border-color:var(--blue);background:rgba(122,162,247,.07);}
+.gallery-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;}
+.gallery-thumb-wrap{position:relative;display:inline-flex;}
+.gallery-thumb{width:64px;height:64px;object-fit:cover;border-radius:5px;cursor:zoom-in;border:2px solid transparent;transition:border-color .1s,transform .12s;}
+.gallery-thumb:hover{border-color:var(--blue);transform:scale(1.05);}
+.gallery-thumb-del{position:absolute;top:-4px;right:-4px;background:var(--bg);border:1px solid var(--border2);border-radius:50%;width:14px;height:14px;font-size:8px;cursor:pointer;display:none;align-items:center;justify-content:center;color:var(--muted);padding:0;line-height:1;}
+.gallery-thumb-wrap:hover .gallery-thumb-del{display:flex;}
+.gallery-thumb-del:hover{color:var(--red);}
+.gallery-file-wrap{position:relative;display:inline-flex;flex-direction:column;align-items:center;gap:3px;width:64px;cursor:pointer;}
+.gallery-file-icon{font-size:30px;line-height:1;padding-top:4px;}
+.gallery-file-name{font-size:9px;color:var(--dark2);text-align:center;word-break:break-all;max-width:64px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3;}
+.gallery-file-wrap:hover .gallery-file-name{color:var(--blue);}
+.gallery-file-wrap .gallery-thumb-del{display:none;}
+.gallery-file-wrap:hover .gallery-thumb-del{display:flex;}
+.gallery-hint{font-size:10px;color:var(--faint);font-style:italic;text-align:center;padding:4px 0;}
+#galleryLightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:5000;}
+#galleryLightbox.open{display:flex;}
+#galleryLightbox img{max-width:90vw;max-height:90vh;border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,.7);cursor:default;position:relative;z-index:1;}
+.lb-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.45);border:none;color:#fff;font-size:32px;cursor:pointer;padding:8px 18px;border-radius:6px;z-index:2;line-height:1;transition:background .12s;user-select:none;}
+.lb-nav:hover{background:rgba(0,0,0,.75);}
+#lbPrev{left:16px;}
+#lbNext{right:16px;}
+#lbCounter{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.65);font-size:12px;z-index:2;pointer-events:none;background:rgba(0,0,0,.35);padding:3px 10px;border-radius:10px;}
+#lbClose{position:absolute;top:14px;right:18px;background:rgba(0,0,0,.45);border:none;color:#fff;font-size:15px;cursor:pointer;padding:4px 9px;border-radius:5px;z-index:2;line-height:1;}
+#lbClose:hover{background:rgba(0,0,0,.75);}
+/* Quick link modal */
+#qlModal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;z-index:2000;align-items:center;justify-content:center;}
+#qlModal.open{display:flex;}
+.ql-modal-inner{background:var(--card);border-radius:8px;padding:18px;width:320px;border:1px solid var(--border2);box-shadow:0 8px 32px rgba(0,0,0,.4);}
+.ql-modal-title{font-size:13px;font-weight:600;color:var(--dark);margin-bottom:12px;}
+.ql-icons-grid{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;}
+.ql-ic-opt{font-size:22px;cursor:pointer;padding:4px 5px;border-radius:5px;border:2px solid transparent;transition:border-color .1s,background .1s;line-height:1;}
+.ql-ic-opt:hover{background:rgba(122,162,247,.12);}
+.ql-ic-opt.selected{border-color:var(--blue);background:rgba(122,162,247,.18);}
+.ql-inp{width:100%;background:#16161e;color:var(--dark);border:1px solid var(--border2);border-radius:4px;padding:5px 8px;font-size:12px;margin-bottom:8px;outline:none;box-sizing:border-box;}
+.ql-inp:focus{border-color:var(--blue);}
+.ql-modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:4px;}
+/* Context menu */
+.ctx-menu{position:fixed;background:var(--card);border:1px solid var(--border2);border-radius:7px;padding:4px 0;min-width:210px;z-index:9999;box-shadow:0 6px 20px rgba(0,0,0,.6);display:none;}
+.ctx-item{padding:7px 14px;font-size:12px;color:var(--dark2);cursor:pointer;display:flex;align-items:center;gap:8px;}
+.ctx-item:hover{background:var(--border);color:var(--dark);}
+/* PDF export button */
+.btn-pdf-export{background:none;border:1px solid var(--border2);border-radius:4px;color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.04em;cursor:pointer;padding:3px 8px;opacity:.5;transition:opacity .1s;}
+.btn-pdf-export:hover{opacity:1;color:var(--blue);border-color:var(--blue);}
+
+/* ── ADD TASK BTN ── */
+.add-task-btn{
+  width:100%;background:transparent;border:none;text-align:left;
+  font-size:12px;color:var(--muted);padding:5px 6px;border-radius:6px;cursor:pointer;margin-top:2px;
+}
+.add-task-btn:hover{background:var(--border);color:var(--dark);}
+
+/* ── DONE SECTION ── */
+details.done-sec>summary{
+  list-style:none;cursor:pointer;font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.4px;color:var(--muted);
+  padding:5px 2px 2px;display:flex;align-items:center;gap:4px;user-select:none;
+}
+details.done-sec>summary::-webkit-details-marker{display:none;}
+.done-arrow{display:inline-block;transition:transform .2s;}
+details.done-sec[open] .done-arrow{transform:rotate(90deg);}
+
+/* ── ADD GAME COL ── */
+.add-game-col{
+  min-width:150px;border-radius:12px;border:2px dashed var(--border2);
+  background:rgba(36,40,59,.5);display:flex;align-items:center;
+  justify-content:center;padding:20px 10px;cursor:pointer;
+  flex-shrink:0;transition:border-color .15s,background .15s;align-self:flex-start;
+}
+.add-game-col:hover{background:var(--border);border-color:var(--muted);}
+.add-game-col span{font-size:12px;color:var(--muted);text-align:center;line-height:2;}
+
+/* ── EMPTY STATE ── */
+.empty-state{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:var(--muted);}
+
+/* ── SCROLLBARS (global) ── */
+*::-webkit-scrollbar{width:5px;height:5px;}
+*::-webkit-scrollbar-track{background:transparent;}
+*::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="app-hdr">
+  <span class="app-title">📋 Task Manager</span>
+  <div class="week-nav ms-1">
+    <button class="btn btn-sm btn-outline-secondary px-2" id="btnPrev">←</button>
+    <span class="week-lbl" id="weekLbl"></span>
+    <button class="btn btn-sm btn-outline-secondary px-2" id="btnNext">→</button>
+    <button class="btn btn-sm btn-outline-primary" id="btnToday" style="display:none">Dziś</button>
+  </div>
+  <div class="ms-auto d-flex gap-2 flex-wrap align-items-center">
+    <div id="globalQlBar" class="ql-bar" style="border:none;padding:0;margin:0;min-height:0;"></div>
+    <div id="fileBadge" style="display:none;align-items:center;gap:5px;font-size:11px;background:rgba(158,206,106,.12);border:1px solid rgba(158,206,106,.3);border-radius:5px;padding:3px 8px;">
+      <span style="color:var(--green)">📁</span>
+      <span id="fileNameLbl" style="color:var(--green);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+      <button id="btnFileDisconnect" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;padding:0 0 0 3px;line-height:1" title="Rozłącz plik">✕</button>
+    </div>
+    <button class="btn-pdf-export" id="btnExportPdf" title="Eksportuj zadania tygodnia do PDF">📄 PDF</button>
+  </div>
+</div>
+
+<!-- BOARD -->
+<div class="board" id="board"></div>
+
+<!-- ONGOING STRIP -->
+<div class="ong-strip">
+  <div class="ong-hdr" id="ongHdr">
+    <span class="ong-hdr-title">🔥 W toku</span>
+    <span class="ong-cnt" id="ongCnt" style="display:none"></span>
+    <span style="font-size:11px;color:var(--faint);margin-left:6px" id="ongHint">— przeciągnij task z kolumny</span>
+    <button class="ong-toggle" id="ongToggleBtn">▼</button>
+  </div>
+  <div class="ong-body" id="ongBody">
+    <div class="ong-list" id="ongList"></div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sb-tge collapsed" id="sbTge">
+    <div class="sb-title sb-title-toggle" id="sbTgeToggle">🎮 Game Schedule <span class="sb-arrow">▾</span></div>
+    <div class="tge-body">
+      <table class="tge-table">
+        <thead><tr><th>Game Event</th><th>Panel Calendar</th><th>Asia</th><th>Europe</th><th>America</th></tr></thead>
+        <tbody>
+          <tr><td class="tge-ev">Hit3</td><td>Hit3</td><td><span class="tge-merged">merged</span></td><td><span class="tge-arr">←</span>21:00</td><td>06:00</td></tr>
+          <tr><td class="tge-ev">Lucky Vault</td><td>Lucky Vault</td><td><span class="tge-merged">merged</span></td><td><span class="tge-arr">←</span>21:00</td><td>06:00</td></tr>
+          <tr><td class="tge-ev">Bank Robbery Express</td><td>Bank Event Season_End</td><td><span class="tge-arr">←</span>21:00</td><td>03:00</td><td>06:00</td></tr>
+          <tr><td class="tge-ev">Wheel Of Fortune</td><td>–</td><td><span class="tge-arr">←</span>15:00</td><td><span class="tge-arr">←</span>21:00</td><td>06:00</td></tr>
+          <tr><td class="tge-ev">Combo Suits</td><td>Overlay</td><td><span class="tge-merged">merged</span></td><td><span class="tge-arr">←</span>21:00</td><td>06:00</td></tr>
+          <tr><td class="tge-ev">Tournament</td><td>Gang Tournament</td><td><span class="tge-merged">merged</span></td><td><span class="tge-arr">←</span>21:00</td><td><span class="tge-arr">←</span>22:30</td></tr>
+          <tr><td class="tge-ev">Rising Stars Tournament</td><td>Rising Star Tourney</td><td><span class="tge-merged">merged</span></td><td><span class="tge-arr">←</span>14:30</td><td><span class="tge-arr">←</span>22:30</td></tr>
+          <tr><td class="tge-ev">World Gang Championship</td><td>Global Gang Tournament</td><td>07:30</td><td>07:30</td><td>07:30</td></tr>
+          <tr><td class="tge-ev">Gang Nations Cup</td><td>Continental Tournament</td><td>07:30</td><td>07:30</td><td>07:30</td></tr>
+          <tr><td class="tge-ev">Bank Robbery</td><td>Bank Event</td><td><span class="tge-arr">←</span>15:00</td><td><span class="tge-arr">←</span>21:00</td><td>06:00</td></tr>
+          <tr><td class="tge-ev">Cartel Rush</td><td>Cartel Rush</td><td>03:00</td><td>03:00</td><td>03:00</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="sb-cal" id="sbCal">
+    <div class="sb-title sb-title-toggle" id="sbCalToggle">📆 Harmonogram <span class="sb-arrow">▾</span></div>
+    <div class="cal-scroll" id="calView"></div>
+  </div>
+  <div class="sb-notes" id="sbNotes">
+    <div class="sb-title sb-title-toggle" id="sbNotesToggle">📝 Notatki tygodnia <span class="sb-arrow">▾</span></div>
+    <div class="notes-scroll">
+      <div id="notesContainer"></div>
+    </div>
+  </div>
+  <div class="sb-gallery" id="sbGallery">
+    <div class="sb-title sb-title-toggle" id="sbGalleryToggle">🖼️ Galeria <span class="sb-arrow">▾</span></div>
+    <div class="gallery-body" id="galleryBody">
+      <div class="gallery-drop" id="galleryDrop">
+        <div class="gallery-grid" id="galleryGrid"></div>
+        <div class="gallery-hint">Przeciągnij grafiki lub kliknij, żeby dodać (Ctrl+V też działa)</div>
+      </div>
+    </div>
+  </div>
+</div>
+<input type="file" id="galleryFileInp" accept="image/*,.txt,.pdf" multiple style="display:none">
+<div id="galleryLightbox">
+  <button id="lbPrev" class="lb-nav">‹</button>
+  <img src="" alt="podgląd">
+  <button id="lbNext" class="lb-nav">›</button>
+  <div id="lbCounter"></div>
+  <button id="lbClose" title="Zamknij">✕</button>
+</div>
+
+<!-- MODAL: Add Task -->
+<div class="modal fade" id="addTaskModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h5 class="modal-title fs-6 fw-bold">Nowe zadanie</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2">
+          <label class="form-label small fw-semibold">Tytuł <span class="text-danger">*</span></label>
+          <input type="text" class="form-control form-control-sm" id="atTitle" placeholder="Co trzeba zrobić?">
+          <div id="atLinkBadge" style="display:none;margin-top:4px;font-size:11px;color:var(--blue);gap:4px;">
+            🔗 <span id="atLinkBadgeUrl" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+            <button type="button" id="atLinkBadgeDel" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:0 2px;line-height:1;" title="Usuń link">✕</button>
+          </div>
+        </div>
+        <div class="mb-2">
+          <label class="form-label small fw-semibold">Gra</label>
+          <select class="form-select form-select-sm" id="atGame"></select>
+        </div>
+        <div class="mb-2">
+          <label class="form-label small fw-semibold">Data <span class="text-muted fw-normal">(opcjonalnie)</span></label>
+          <input type="text" class="form-control form-control-sm" id="atDate" placeholder="DD/MM/RRRR" maxlength="10" oninput="formatDateInput(this)">
+        </div>
+        <div class="mb-1">
+          <label class="form-label small fw-semibold">Notatka <span class="text-muted fw-normal">(opcjonalnie)</span></label>
+          <textarea class="form-control form-control-sm" id="atNote" rows="2"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Anuluj</button>
+        <button type="button" class="btn btn-primary btn-sm" id="atSave">Dodaj</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add Game -->
+<div class="modal fade" id="addGameModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h5 class="modal-title fs-6 fw-bold">Nowa gra / kategoria</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="text" class="form-control form-control-sm mb-2" id="agName" placeholder="Nazwa">
+        <input type="color" class="form-control form-control-sm form-control-color" id="agColor" value="#7aa2f7">
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Anuluj</button>
+        <button type="button" class="btn btn-primary btn-sm" id="agSave">Dodaj</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="qlModal">
+  <div class="ql-modal-inner">
+    <div class="ql-modal-title" id="qlModalTitle">Dodaj link</div>
+    <div class="ql-icons-grid" id="qlIconGrid"></div>
+    <input id="qlUrl" class="ql-inp" type="text" placeholder="URL (https://...)" maxlength="500">
+    <input id="qlLabel" class="ql-inp" type="text" placeholder="Opis (widoczny po najechaniu myszką)" maxlength="120">
+    <div class="ql-modal-btns">
+      <button id="qlClose" class="btn btn-sm btn-secondary">Anuluj</button>
+      <button id="qlSave" class="btn btn-sm btn-primary">Zapisz</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONTEXT MENU -->
+<div id="ctxMenu" class="ctx-menu">
+  <div class="ctx-item" id="ctxEditTitle">✏️ Edytuj tytuł</div>
+  <div class="ctx-item" id="ctxEditSubtask">✏️ Edytuj podtask</div>
+  <div class="ctx-item" id="ctxMoveNext">⏭ Przenieś na następny tydzień</div>
+  <div class="ctx-item" id="ctxMoveCurrent">⏮ Przenieś do bieżącego tygodnia</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+'use strict';
+
+// ═══════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════
+const STORAGE_KEY='gamesture-tasks-v2';
+const DEFAULT_GAMES=[
+  {name:'Ogólne',       icon:'🌐', color:'#565f89', general:true},
+  {name:'The Gang',     icon:null, color:'#f7768e'},
+  {name:'Cooking Wars', icon:null, color:'#ff9e64'},
+  {name:'Mafia Rivals', icon:null, color:'#bb9af7'},
+];
+// Dark-mode note colors — user palette
+const NOTE_COLORS=[
+  '#1e0806',  // dark burgundy
+  '#060f22',  // deep navy (new)
+  '#0d1830',  // dark navy blue
+  '#1a0f1c',  // dark plum/mauve
+  '#221110',  // dark terracotta/brick
+  '#0c1c20',  // dark teal
+  '#121a10',  // dark sage green
+  '#101820',  // dark steel slate
+];
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+let state, currentWeekKey;
+const expandedCards=new Set();
+let lastClickedTaskId=null;
+
+// ── FILE HANDLE (File System Access API) ──
+let fileHandle=null;
+
+async function idbOpen(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open('tm-fh',1);
+    req.onupgradeneeded=e=>e.target.result.createObjectStore('h');
+    req.onsuccess=e=>res(e.target.result);
+    req.onerror=rej;
+  });
+}
+async function idbSaveHandle(h){
+  try{const db=await idbOpen();const tx=db.transaction('h','readwrite');tx.objectStore('h').put(h,'main');}catch(_){}
+}
+async function idbLoadHandle(){
+  try{
+    const db=await idbOpen();
+    return new Promise((res,rej)=>{const tx=db.transaction('h','readonly');const r=tx.objectStore('h').get('main');r.onsuccess=()=>res(r.result);r.onerror=rej;});
+  }catch{return null;}
+}
+async function idbClearHandle(){
+  try{const db=await idbOpen();const tx=db.transaction('h','readwrite');tx.objectStore('h').delete('main');}catch(_){}
+}
+
+async function saveToFile(){
+  if(!fileHandle)return;
+  try{
+    const w=await fileHandle.createWritable();
+    await w.write(JSON.stringify(state,null,2));
+    await w.close();
+  }catch(e){console.warn('File save failed:',e);}
+}
+
+function save(){
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+  if(fileHandle) saveToFile();
+}
+
+async function loadFromFile(h){
+  const file=await h.getFile();
+  const text=await file.text();
+  return migrateData(JSON.parse(text));
+}
+
+function updateFileUI(){
+  const badge=document.getElementById('fileBadge');
+  if(fileHandle){
+    document.getElementById('fileNameLbl').textContent=fileHandle.name;
+    badge.style.display='flex';
+  }else{
+    badge.style.display='none';
+  }
+}
+
+async function connectExistingFile(){
+  try{
+    const [h]=await window.showOpenFilePicker({types:[{description:'JSON',accept:{'application/json':['.json']}}],excludeAcceptAllOption:true});
+    fileHandle=h;await idbSaveHandle(h);
+    try{state=await loadFromFile(h);}catch{save();} // new/empty file
+    updateFileUI();renderApp();
+  }catch(_){}
+}
+async function createNewFile(){
+  try{
+    const h=await window.showSaveFilePicker({suggestedName:'gamesture-tasks.json',types:[{description:'JSON',accept:{'application/json':['.json']}}]});
+    fileHandle=h;await idbSaveHandle(h);
+    save(); // write current state to new file
+    updateFileUI();
+  }catch(_){}
+}
+async function disconnectFile(){
+  fileHandle=null;await idbClearHandle();updateFileUI();
+}
+
+// ── MIGRATION ──
+function migrateData(s){
+  if(!s||typeof s!=='object') s={};
+  if (!Array.isArray(s.games)) s.games=[];
+  if (s.games.length&&typeof s.games[0]==='string'){
+    const P=['#f7768e','#bb9af7','#ff9e64','#565f89'];
+    s.games=s.games.map((name,i)=>({name,icon:null,color:P[i%P.length]}));
+  }
+  if (!Array.isArray(s.tasks)){
+    const flat=[];
+    if (s.tasks&&typeof s.tasks==='object'){
+      Object.entries(s.tasks).forEach(([wk,arr])=>{
+        if (!Array.isArray(arr)) return;
+        arr.forEach(t=>{
+          let st=t.status||'active';
+          if(st==='todo'||st==='in-progress') st='active';
+          flat.push({...t,weekKey:wk,status:st});
+        });
+      });
+    }
+    s.tasks=flat;
+  }
+  if (!Array.isArray(s.tasks)) s.tasks=[];
+  s.tasks.forEach(t=>{
+    if(!t.status||t.status==='todo'||t.status==='in-progress') t.status='active';
+    if(!t.weekKey) t.weekKey=isoWeekKey(new Date());
+    if(t.priority===undefined) t.priority=false;
+    if(!t.note) t.note='';
+    if(t.order===undefined) t.order=0;
+    if(!t.attachments) t.attachments=[];
+    if(!t.subtasks) t.subtasks=[];
+    if(t.link===undefined) t.link=null;
+  });
+  if(!s.quicklinks) s.quicklinks=[];
+  s.quicklinks.forEach(l=>{
+    if(l.url&&l.url!=='http://game-pulse/'&&(/gamepulse|game.?pulse|gannet-kitefin\.ts\.net:5566/i.test(l.url)||/gamepulse|game.?pulse/i.test(l.label||'')))
+      l.url='http://game-pulse/';
+  });
+  if(!s.quicklinks.find(l=>l.url==='http://knowledge/tutorials'))
+    s.quicklinks.push({id:'ql-knowledge',icon:'📖',url:'http://knowledge/tutorials',label:'Knowledge Base'});
+  if(!s.gallery) s.gallery=[];
+  const GAME_ORDER=['Ogólne','The Gang','Cooking Wars','Mafia Rivals'];
+  s.games.sort((a,b)=>{
+    const ai=GAME_ORDER.indexOf(a.name),bi=GAME_ORDER.indexOf(b.name);
+    if(ai<0&&bi<0)return 0;if(ai<0)return 1;if(bi<0)return-1;return ai-bi;
+  });
+  if(!s.notes) s.notes=[];
+  if(!Array.isArray(s.notes)){
+    const merged=[];
+    Object.values(s.notes).forEach(val=>{
+      if(typeof val==='string'){if(val.trim())merged.push({id:uid(),text:val,color:'#1e0806'});}
+      else if(Array.isArray(val)) val.forEach(n=>{if(n&&n.id)merged.push(n);});
+    });
+    s.notes=merged;
+  }
+  s.notes.forEach(n=>{if(!n.color)n.color='#1e0806';});
+  return s;
+}
+function loadAndMigrate(){
+  let s;try{s=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');}catch(_){}
+  return migrateData(s||{});
+}
+
+// ═══════════════════════════════════════
+// WEEK UTILITIES
+// ═══════════════════════════════════════
+function isoWeekKey(date){
+  const d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));
+  const dow=d.getUTCDay()||7;
+  d.setUTCDate(d.getUTCDate()+4-dow);
+  const y1=new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  const wn=Math.ceil((((d-y1)/864e5)+1)/7);
+  return `${d.getUTCFullYear()}-W${String(wn).padStart(2,'0')}`;
+}
+function dateStrToWk(ds){const[y,m,d]=ds.split('-').map(Number);return isoWeekKey(new Date(y,m-1,d));}
+function toDisplayDate(iso){if(!iso)return'';const[y,m,d]=iso.split('-');return`${d}/${m}/${y}`;}
+function parseDisplayDate(s){if(!s)return'';const m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);if(!m)return'';return`${m[3]}-${m[2]}-${m[1]}`;}
+function formatDateInput(inp){let v=inp.value.replace(/\D/g,'');if(v.length>2)v=v.slice(0,2)+'/'+v.slice(2);if(v.length>5)v=v.slice(0,5)+'/'+v.slice(5);inp.value=v.slice(0,10);}
+function easterDate(y){
+  const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),month=Math.floor((h+l-7*m+114)/31),day=((h+l-7*m+114)%31)+1;
+  return new Date(y,month-1,day);
+}
+const _holidays={};
+function getHolidays(y){
+  if(_holidays[y]) return _holidays[y];
+  const e=easterDate(y);
+  const add=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x.toISOString().slice(0,10);};
+  const p2=n=>String(n).padStart(2,'0');
+  const fix=(m,d)=>`${y}-${p2(m)}-${p2(d)}`;
+  _holidays[y]=new Set([
+    fix(1,1),fix(1,6),fix(5,1),fix(5,3),fix(8,15),
+    fix(11,1),fix(11,11),fix(12,25),fix(12,26),
+    add(e,0),add(e,1),add(e,49),add(e,60)
+  ]);
+  return _holidays[y];
+}
+function isHoliday(ds){
+  if(!ds) return false;
+  const d=new Date(ds+'T00:00:00');
+  const dow=d.getDay();
+  if(dow===0||dow===6) return true;
+  return getHolidays(d.getFullYear()).has(ds);
+}
+function weekRange(wk){
+  const[yr,wn]=wk.split('-W').map(Number);
+  const jan4=new Date(Date.UTC(yr,0,4));
+  const mon=new Date(jan4);
+  mon.setUTCDate(jan4.getUTCDate()-((jan4.getUTCDay()||7)-1)+(wn-1)*7);
+  const sun=new Date(mon);sun.setUTCDate(mon.getUTCDate()+6);
+  return{mon,sun};
+}
+function shiftWeek(wk,n){
+  const{mon}=weekRange(wk);
+  const d=new Date(mon.getUTCFullYear(),mon.getUTCMonth(),mon.getUTCDate());
+  d.setDate(d.getDate()+n*7);return isoWeekKey(d);
+}
+function isInWeek(ds,wk){
+  if(!ds) return false;
+  const{mon,sun}=weekRange(wk);
+  const[y,m,d]=ds.split('-').map(Number);
+  const t=new Date(Date.UTC(y,m-1,d));
+  return t>=mon&&t<=sun;
+}
+function todayStr(){const n=new Date();return`${n.getFullYear()}-${p2(n.getMonth()+1)}-${p2(n.getDate())}`;}
+function p2(n){return String(n).padStart(2,'0');}
+const PL_MON=['sty','lut','mar','kwi','maj','cze','lip','sie','wrz','paź','lis','gru'];
+const PL_DNI=['Nd','Pon','Wt','Śr','Czw','Pt','Sb'];
+function fmtDate(ds){
+  if(!ds) return'';
+  const[y,m,d]=ds.split('-').map(Number);
+  const dt=new Date(Date.UTC(y,m-1,d));
+  return`${PL_DNI[dt.getUTCDay()]} ${dt.getUTCDate()} ${PL_MON[dt.getUTCMonth()]}`;
+}
+function fmtWeek(wk){
+  const{mon,sun}=weekRange(wk);
+  const sd=mon.getUTCDate(),sm=PL_MON[mon.getUTCMonth()];
+  const ed=sun.getUTCDate(),em=PL_MON[sun.getUTCMonth()],yr=sun.getUTCFullYear();
+  return mon.getUTCMonth()===sun.getUTCMonth()?`${sd}–${ed} ${em} ${yr}`:`${sd} ${sm} – ${ed} ${em} ${yr}`;
+}
+
+// ═══════════════════════════════════════
+// TASK UTILS
+// ═══════════════════════════════════════
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function patchTask(id,patch){const i=state.tasks.findIndex(t=>t.id===id);if(i>=0){Object.assign(state.tasks[i],patch);save();}}
+function removeTask(id){state.tasks=state.tasks.filter(t=>t.id!==id);save();}
+function pushTask(task){state.tasks.push(task);save();}
+function taskById(id){return state.tasks.find(t=>t.id===id);}
+
+// ═══════════════════════════════════════
+// GAME UTILS
+// ═══════════════════════════════════════
+function gameCfg(name){return state.games.find(g=>g.name===name);}
+function gameColor(name){return gameCfg(name)?.color||'#565f89';}
+function isGeneral(name){return name==='Ogólne'||gameCfg(name)?.general===true;}
+
+function gameIconHtml(name,size=40,radius=8){
+  const g=gameCfg(name);const col=g?.color||'#565f89';
+  if(g?.icon&&g.icon.startsWith('data:'))
+    return`<img src="${g.icon}" style="width:${size}px;height:${size}px;border-radius:${radius}px;object-fit:cover;border:1px solid rgba(255,255,255,.1);flex-shrink:0" alt="">`;
+  if(g?.icon)
+    return`<span style="width:${size}px;height:${size}px;border-radius:${radius}px;background:${col};display:inline-flex;align-items:center;justify-content:center;font-size:${Math.floor(size*.55)}px;flex-shrink:0;border:1px solid rgba(255,255,255,.1)">${g.icon}</span>`;
+  return`<span style="width:${size}px;height:${size}px;border-radius:${radius}px;background:${col};display:inline-flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:${Math.floor(size*.45)}px;flex-shrink:0;border:1px solid rgba(255,255,255,.1)">${(name||'?')[0]}</span>`;
+}
+function gameBadgeHtml(name){
+  const g=gameCfg(name);const col=g?.color||'#565f89';
+  let icon='';
+  if(g?.icon&&g.icon.startsWith('data:')) icon=`<img src="${g.icon}" alt="">`;
+  else if(g?.icon) icon=`<span class="badge-ltr">${g.icon}</span>`;
+  else icon=`<span class="badge-ltr">${(name||'?')[0]}</span>`;
+  return`<span class="ong-game-badge" style="background:${col}">${icon}${esc(name)}</span>`;
+}
+
+// ═══════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════
+let sortables=[];
+function renderApp(){renderHeader();renderBoard();renderOngoing();renderSidebar();renderGlobalQlBar();}
+
+function renderHeader(){
+  document.getElementById('weekLbl').textContent=fmtWeek(currentWeekKey);
+  document.getElementById('btnToday').style.display=currentWeekKey===isoWeekKey(new Date())?'none':'';
+}
+
+function renderBoard(){
+  sortables.forEach(s=>s.destroy());sortables=[];
+  const board=document.getElementById('board');board.innerHTML='';
+  if(!state.games.length){
+    board.innerHTML=`<div class="empty-state w-100">
+      <div style="font-size:48px">📋</div>
+      <div style="font-size:16px;font-weight:700;color:var(--dark)">Witaj w Task Manager!</div>
+      <div style="color:var(--muted)">Dodaj pierwszą grę, aby zacząć planować.</div>
+      <button class="btn btn-primary btn-sm mt-2" id="btnFirst">+ Dodaj grę</button></div>`;
+    document.getElementById('btnFirst')?.addEventListener('click',openAddGame);return;
+  }
+  state.games.forEach(g=>board.appendChild(buildColumn(g.name)));
+  initSortables();
+  initSubtaskSortables();
+  requestAnimationFrame(()=>board.querySelectorAll('textarea').forEach(autoResize));
+}
+
+function buildColumn(game){
+  const col=document.createElement('div');
+  col.className=`game-col${isGeneral(game)?' general-col':''}`;
+  col.dataset.game=game;
+  const allActive=state.tasks.filter(t=>t.game===game&&t.weekKey===currentWeekKey&&t.status==='active');
+  const allDone  =state.tasks.filter(t=>t.game===game&&t.weekKey===currentWeekKey&&t.status==='done');
+  const active=allActive.sort((a,b)=>{
+    const ad=a.date||'',bd=b.date||'';
+    if(!ad&&!bd) return (a.order||0)-(b.order||0);
+    if(!ad) return -1;
+    if(!bd) return 1;
+    return ad.localeCompare(bd);
+  });
+  const done=allDone.sort((a,b)=>(a.order||0)-(b.order||0));
+  col.innerHTML=`
+    <div class="col-hdr">
+      <label title="Kliknij, aby ustawić ikonę" style="cursor:pointer;display:flex;flex-shrink:0">
+        ${gameIconHtml(game,40,8)}
+        <input type="file" accept="image/*" class="icon-file-inp" data-game="${esc(game)}">
+      </label>
+      <span class="col-name" data-game="${esc(game)}">${esc(game)}</span>
+      ${active.length?`<span class="sec-cnt">${active.length}</span>`:''}
+      <span class="col-del" data-del-game="${esc(game)}" title="Usuń">✕</span>
+    </div>
+    <div class="task-list tw-list" data-game="${esc(game)}">
+      ${active.map(cardHtml).join('')||'<div class="empty-msg">Brak zadań</div>'}
+    </div>
+    <button class="add-task-btn" data-add-game="${esc(game)}">+ Dodaj zadanie</button>
+    <details class="done-sec mt-1">
+      <summary><span class="done-arrow">▶</span> Gotowe <span class="sec-cnt ms-1">${done.length}</span></summary>
+      <div class="task-list done-list mt-1" data-game="${esc(game)}">
+        ${done.map(cardHtml).join('')||'<div class="empty-msg">Brak</div>'}
+      </div>
+    </details>`;
+  return col;
+}
+
+function cardHtml(t){
+  const td=todayStr(),ds=t.date||'';
+  let chipCls='';
+  if(ds===td) chipCls='today';
+  else if(ds&&ds<td) chipCls='late';
+  else if(ds&&isHoliday(ds)) chipCls='holiday';
+  const dateArea=ds
+    ?`<div class="card-date">
+        <span class="date-chip ${chipCls}" data-action="edit-date" data-id="${t.id}">${fmtDate(ds)}</span>
+        <input type="text" class="date-input" data-f="date" data-id="${t.id}" value="${toDisplayDate(ds)}" placeholder="DD/MM/RRRR" maxlength="10" style="display:none" oninput="formatDateInput(this)">
+      </div>`
+    :`<div class="card-date">
+        <button class="btn-add-date" data-action="show-date" data-id="${t.id}" title="Dodaj datę">📅</button>
+        <input type="text" class="date-input" data-f="date" data-id="${t.id}" value="" placeholder="DD/MM/RRRR" maxlength="10" style="display:none" oninput="formatDateInput(this)">
+      </div>`;
+  const atts=(t.attachments||[]);
+  const attHtml=atts.map(a=>{
+    const preview=a.type.startsWith('image/')
+      ?`<img src="${a.data}" class="attach-thumb" title="${esc(a.name)}" data-action="view-attach" data-att-id="${a.id}" data-id="${t.id}">`
+      :`<a class="attach-link" href="${a.data}" download="${esc(a.name)}" title="${esc(a.name)}">${esc(a.name)}</a>`;
+    return`<div class="attach-item">${preview}<button class="attach-del" data-action="del-attach" data-att-id="${a.id}" data-id="${t.id}">✕</button></div>`;
+  }).join('');
+  const subs=(t.subtasks||[]);
+  const _td=todayStr();
+  const subsItemsHtml=subs.map(s=>{
+    const sd=s.date||'';
+    const sCls=sd===_td?'today':sd&&sd<_td?'late':sd&&isHoliday(sd)?'holiday':'';
+    const dateEl=sd
+      ?`<span class="sub-date-chip ${sCls}" data-action="edit-sub-date" data-subtask-id="${s.id}" data-id="${t.id}">${fmtDate(sd)}</span>`
+      :`<button class="sub-date-btn" data-action="add-sub-date" data-subtask-id="${s.id}" data-id="${t.id}" title="Dodaj datę">📅</button>`;
+    return`<div class="subtask" data-subtask-id="${s.id}" data-id="${t.id}">
+  <span class="sub-drag">⠿</span>
+  <div class="subtask-cb ${s.done?'done':''}" data-action="toggle-subtask" data-subtask-id="${s.id}" data-id="${t.id}"></div>
+  ${dateEl}
+  <input type="text" class="sub-date-inp" data-subtask-id="${s.id}" data-id="${t.id}" value="${sd?toDisplayDate(sd):''}" placeholder="DD/MM/RRRR" maxlength="10" style="display:none" oninput="formatDateInput(this)">
+  <span class="subtask-title ${s.done?'done-text':''}">${formatSubtaskTitle(s.title)}</span>
+  <button class="subtask-del" data-action="del-subtask" data-subtask-id="${s.id}" data-id="${t.id}">✕</button>
+</div>`;
+  }).join('');
+  const isExp=expandedCards.has(t.id);
+  const hasNote=!!(t.note&&t.note.trim());
+  const noteClass=hasNote?'has-note':'';
+  const titleDisp=t.link
+    ?`<div class="title-display ${noteClass}" data-action="expand" data-id="${t.id}">${formatWithTimes(t.title)}<span class="link-icon" data-action="open-link" data-link="${esc(t.link)}" data-id="${t.id}" title="Otwórz link">↗</span></div>`
+    :`<div class="title-display ${noteClass}" data-action="expand" data-id="${t.id}">${formatWithTimes(t.title)}</div>`;
+  return`
+<div class="task-card ${t.priority?'priority':''} ${isExp?'expanded':''} ${hasNote?'has-note-content':''}" data-id="${t.id}" data-status="${t.status}">
+  <div class="card-top">
+    <span class="drag-handle">⠿</span>
+    <div class="cb ${t.status==='done'?'done':''}" data-action="toggle" data-id="${t.id}"></div>
+    ${dateArea}
+    <div class="title-wrap">
+      ${titleDisp}
+      <textarea class="card-title" data-f="title" data-id="${t.id}" rows="1" spellcheck="false">${esc(t.title)}</textarea>
+    </div>
+  </div>
+  ${subs.length?`<div class="card-subs-always">${subsItemsHtml}</div>`:''}
+  <div class="card-expand">
+    <div class="subtasks-area"><input class="subtask-inp" data-id="${t.id}" placeholder="+ Dodaj podzadanie..."></div>
+    <div class="card-note-view" data-id="${t.id}">${formatNoteLinks(t.note||'')}</div>
+    <textarea class="card-note" data-f="note" data-id="${t.id}" rows="1" placeholder="Notatka..." spellcheck="false">${esc(t.note||'')}</textarea>
+  </div>
+  ${atts.length?`<div class="card-attach-always">${attHtml}</div>`:''}
+  <div class="attach-hint">Upuść plik lub wklej (Ctrl+V) aby dodać załącznik</div>
+  <div class="card-footer">
+    <button class="btn-prio ${t.priority?'on':''}" data-action="priority" data-id="${t.id}" title="${t.priority?'Usuń priorytet':'Oznacz jako ważne'}">${t.priority?'⭐':'☆'}</button>
+    ${t.status!=='done'?`<button class="btn-ong" data-action="to-ongoing" data-id="${t.id}" title="Przenieś do W toku">🔥</button>`:''}
+    <button class="btn-dup" data-action="dup" data-id="${t.id}" title="Duplikuj">⎘</button>
+    <button class="del-btn" data-action="del" data-id="${t.id}" title="Usuń">✕</button>
+  </div>
+</div>`;
+}
+
+// ── ONGOING ────────────────────────────────────────
+let ongOpen=true;
+function renderOngoing(){
+  const ongoing=state.tasks.filter(t=>t.status==='ongoing').sort((a,b)=>(a.ongOrder||0)-(b.ongOrder||0));
+  const cntEl=document.getElementById('ongCnt');
+  const hintEl=document.getElementById('ongHint');
+  const listEl=document.getElementById('ongList');
+  cntEl.style.display=ongoing.length?'':'none';
+  cntEl.textContent=ongoing.length;
+  hintEl.style.display=ongoing.length?'none':'';
+  listEl.innerHTML=ongoing.length?ongoing.map(ongCardHtml).join(''):'<div class="ong-empty">Brak zadań w toku</div>';
+  document.getElementById('ongBody').classList.toggle('collapsed',!ongOpen);
+  document.getElementById('ongToggleBtn').textContent=ongOpen?'▼':'▶';
+  sortables=sortables.filter(s=>{if(s.el===listEl){s.destroy();return false;}return true;});
+  sortables.push(Sortable.create(listEl,{
+    group:{name:'ong',put:['active']},
+    handle:'.ong-drag',
+    animation:150,
+    ghostClass:'sortable-ghost',
+    onAdd(evt){
+      listEl.classList.remove('drag-over');
+      patchTask(evt.item.dataset.id,{status:'ongoing'});
+      renderApp();
+    },
+    onEnd(){
+      [...listEl.querySelectorAll('.ong-card')].forEach((el,i)=>patchTask(el.dataset.id,{ongOrder:i}));
+    }
+  }));
+}
+
+function ongCardHtml(t){
+  const ds=t.date||'';
+  return`
+<div class="ong-card ${t.priority?'priority':''}" data-id="${t.id}">
+  <div class="ong-top">
+    <span class="ong-drag">⠿</span>
+    ${gameBadgeHtml(t.game)}
+    ${t.priority?'<span style="font-size:12px">⭐</span>':''}
+  </div>
+  <div class="ong-top" style="align-items:flex-start;gap:6px">
+    <div class="ong-cb" data-action="done-ongoing" data-id="${t.id}" title="Oznacz jako gotowe"></div>
+    <span class="ong-title">${esc(t.title)}</span>
+  </div>
+  <div class="ong-foot">
+    ${ds?`<span class="date-chip" style="font-size:10px">${fmtDate(ds)}</span>`:''}
+    <button class="ong-return ms-auto" data-action="return-ongoing" data-id="${t.id}">↩ Wróć</button>
+  </div>
+</div>`;
+}
+
+// ── SIDEBAR ────────────────────────────────────────
+function renderSidebar(){renderCalendar();renderNotes();renderGallery();}
+
+function renderCalendar(){
+  const calView=document.getElementById('calView');
+  const tasks=state.tasks.filter(t=>t.date&&t.status!=='done').sort((a,b)=>a.date.localeCompare(b.date));
+  if(!tasks.length){
+    calView.innerHTML='<div style="font-size:11px;color:var(--faint);font-style:italic;padding:4px 0">Brak zadań z datą</div>';return;
+  }
+  const td=todayStr(),thisWk=isoWeekKey(new Date()),byDate={};
+  tasks.forEach(t=>{if(!byDate[t.date])byDate[t.date]=[];byDate[t.date].push(t);});
+  let html='';
+  Object.keys(byDate).sort().forEach(ds=>{
+    const isToday=ds===td;
+    const isThisWk=dateStrToWk(ds)===thisWk;
+    const isLate=ds<td;
+    const isHol=isHoliday(ds);
+    html+=`<div class="cal-day-hdr ${isToday?'today-hdr':isLate?'late-hdr':isHol?'holiday-hdr':isThisWk?'this-week-hdr':''}">${fmtDate(ds)}${isToday?' ★':''}</div>`;
+    byDate[ds].forEach(t=>{
+      const col=gameColor(t.game);
+      const g=gameCfg(t.game);
+      const dotHtml=g?.icon&&g.icon.startsWith('data:')
+        ?`<img src="${g.icon}" style="width:12px;height:12px;border-radius:2px;object-fit:cover;flex-shrink:0" alt="">`
+        :`<span class="cal-dot" style="background:${col}"></span>`;
+      html+=`<div class="cal-entry ${t.priority?'prio-entry':''} ${isThisWk?'this-week-entry':''} ${isLate?'late-entry':''}" data-nav-id="${t.id}">
+        ${dotHtml}
+        <span class="cal-ttl">${esc(t.title)}</span>
+        ${t.priority?'<span class="cal-star">⭐</span>':''}
+      </div>`;
+    });
+  });
+  calView.innerHTML=html;
+}
+
+function renderNotes(){
+  const container=document.getElementById('notesContainer');
+  const wkNotes=state.notes||[];
+  container.innerHTML=`<button class="add-note-btn" id="addNoteBtn">+ Notatka</button>`+wkNotes.map(n=>{
+    const hasText=!!(n.text&&n.text.trim());
+    return`
+<div class="note-card ${hasText?'':'note-empty'}" data-note-id="${n.id}" style="background:${n.color||'#2d2b05'}">
+  <div class="note-top">
+    <span class="note-drag" title="Przeciągnij">⠿</span>
+    <div class="note-colors">
+      ${NOTE_COLORS.map(c=>`<span class="note-cdot ${c===n.color?'active':''}" data-color="${c}" data-note-id="${n.id}" style="background:${c}"></span>`).join('')}
+    </div>
+    <button class="note-del" data-del-note="${n.id}" title="Usuń">✕</button>
+  </div>
+  <div class="note-view">${formatNoteLinks(n.text||'')}</div>
+  <textarea class="note-ta" data-note-id="${n.id}" rows="2" placeholder="Notatka...">${esc(n.text||'')}</textarea>
+</div>`;
+  }).join('');
+  requestAnimationFrame(()=>container.querySelectorAll('.note-ta').forEach(autoResize));
+  initNotesSortable();
+}
+
+let notesSortable=null;
+function initNotesSortable(){
+  if(notesSortable){try{notesSortable.destroy();}catch(_){}notesSortable=null;}
+  const c=document.getElementById('notesContainer');if(!c)return;
+  notesSortable=Sortable.create(c,{
+    handle:'.note-drag',animation:150,filter:'#addNoteBtn',preventOnFilter:false,
+    onEnd(){
+      const ids=[...c.querySelectorAll('.note-card')].map(el=>el.dataset.noteId);
+      const byId={};(state.notes||[]).forEach(n=>byId[n.id]=n);
+      state.notes=ids.map(id=>byId[id]).filter(Boolean);save();
+    }
+  });
+}
+
+// ── SORTABLES ────────────────────────────────────
+function initSubtaskSortables(){
+  document.querySelectorAll('.card-subs-always').forEach(container=>{
+    sortables.push(Sortable.create(container,{
+      handle:'.sub-drag',animation:120,
+      ghostClass:'sortable-ghost',chosenClass:'sortable-chosen',
+      onEnd(){
+        const taskId=container.closest('.task-card')?.dataset.id;if(!taskId)return;
+        const t=taskById(taskId);if(!t)return;
+        const newOrder=[...container.querySelectorAll('.subtask')].map(el=>el.dataset.subtaskId);
+        t.subtasks=newOrder.map(sid=>t.subtasks.find(s=>s.id===sid)).filter(Boolean);
+        patchTask(taskId,{subtasks:t.subtasks});
+      }
+    }));
+  });
+}
+function initSortables(){
+  document.querySelectorAll('.tw-list').forEach(list=>{
+    sortables.push(Sortable.create(list,{
+      group:{name:'active',pull:true,put:['active']},
+      handle:'.drag-handle',animation:150,
+      ghostClass:'sortable-ghost',chosenClass:'sortable-chosen',filter:'.empty-msg',
+      onEnd(evt){
+        if(evt.to.id==='ongList') return; // handled by onAdd
+        const id=evt.item.dataset.id;
+        const newGame=evt.to.dataset.game;
+        if(evt.from!==evt.to) patchTask(id,{game:newGame});
+        [...evt.to.querySelectorAll('.task-card')].forEach((el,i)=>patchTask(el.dataset.id,{order:i}));
+        renderApp();
+      }
+    }));
+  });
+}
+
+// ═══════════════════════════════════════
+// TASK ACTIONS
+// ═══════════════════════════════════════
+function toggleDone(id){
+  const t=taskById(id);if(!t)return;
+  patchTask(id,{status:t.status==='done'?'active':'done'});renderApp();
+}
+function togglePriority(id){
+  const t=taskById(id);if(!t)return;
+  patchTask(id,{priority:!t.priority});renderApp();
+}
+function moveToOngoing(id){patchTask(id,{status:'ongoing'});renderApp();}
+function returnFromOngoing(id){patchTask(id,{status:'active'});renderApp();}
+function doneFromOngoing(id){patchTask(id,{status:'done'});renderApp();}
+function deleteTask(id){if(!confirm('Usunąć zadanie?'))return;removeTask(id);renderApp();}
+function duplicateTask(id){
+  const t=taskById(id);if(!t)return;
+  const newId=uid();
+  const siblings=state.tasks.filter(x=>x.game===t.game&&x.weekKey===t.weekKey&&x.status==='active');
+  const myIdx=siblings.findIndex(x=>x.id===id);
+  pushTask({...t,id:newId,status:'active',order:(t.order||0)+0.5,subtasks:(t.subtasks||[]).map(s=>({...s,id:uid()}))});
+  renderApp();
+  requestAnimationFrame(()=>{
+    const card=document.querySelector(`.task-card[data-id="${newId}"]`);
+    if(card) card.scrollIntoView({behavior:'smooth',block:'nearest'});
+  });
+}
+function deleteGame(name){
+  if(!confirm(`Usunąć "${name}"?\nZadania pozostaną w danych.`))return;
+  state.games=state.games.filter(g=>g.name!==name);save();renderApp();
+}
+const QUICK_ICONS=['🔗','🌐','📊','📝','📋','📌','📅','🔔','⚡','🎯','💬','📁','🎮','✅','🛠️','📣','🚀','📈','🗂️','🧩','⭐','🏆','🔍','💡','🎨','🖼️','📸','🎬','🎵','🔑','🛡️','🍔','🥟','🍵','😎','💣','🪟'];
+let qlSelectedIcon=QUICK_ICONS[0],qlEditId=null;
+function openQlModal(editId){
+  qlEditId=editId||null;
+  const existing=qlEditId?(state.quicklinks||[]).find(l=>l.id===qlEditId):null;
+  qlSelectedIcon=existing?existing.icon:QUICK_ICONS[0];
+  document.getElementById('qlUrl').value=existing?existing.url:'';
+  document.getElementById('qlLabel').value=existing?existing.label:'';
+  document.getElementById('qlModalTitle').textContent=existing?'Edytuj link':'Dodaj link';
+  const grid=document.getElementById('qlIconGrid');
+  grid.innerHTML=QUICK_ICONS.map(ic=>`<span class="ql-ic-opt${ic===qlSelectedIcon?' selected':''}" data-icon="${ic}">${ic}</span>`).join('');
+  document.getElementById('qlModal').classList.add('open');
+  setTimeout(()=>document.getElementById('qlUrl').focus(),60);
+}
+function closeQlModal(){document.getElementById('qlModal').classList.remove('open');qlEditId=null;}
+function saveQlLink(){
+  let url=document.getElementById('qlUrl').value.trim();if(!url)return;
+  const label=document.getElementById('qlLabel').value.trim();
+  if(!/^https?:\/\//i.test(url)) url='https://'+url;
+  if(!state.quicklinks) state.quicklinks=[];
+  if(qlEditId){
+    const l=state.quicklinks.find(x=>x.id===qlEditId);
+    if(l){l.icon=qlSelectedIcon;l.url=url;l.label=label;}
+  } else {
+    state.quicklinks.push({id:uid(),icon:qlSelectedIcon,url,label});
+  }
+  save();renderApp();closeQlModal();
+}
+function delQlLink(linkId){
+  state.quicklinks=(state.quicklinks||[]).filter(l=>l.id!==linkId);
+  save();renderApp();
+}
+let qlSortable=null,qlEditMode=false;
+function renderGlobalQlBar(){
+  const bar=document.getElementById('globalQlBar');if(!bar)return;
+  if(qlSortable){try{qlSortable.destroy();}catch(_){}qlSortable=null;}
+  const links=state.quicklinks||[];
+  const iconsHtml=links.map(l=>`<div class="ql-item" data-ql-id="${l.id}"><a href="${esc(l.url)}" target="_blank" rel="noopener" class="ql-icon" title="${esc(l.label||l.url)}">${l.icon}</a><button class="ql-item-edit" data-action="ql-edit" data-ql-id="${l.id}">✏</button><button class="ql-item-del" data-action="ql-del" data-ql-id="${l.id}">✕</button></div>`).join('');
+  bar.innerHTML=iconsHtml
+    +`<button class="ql-add" data-action="ql-open" title="Dodaj link">+</button>`
+    +`<button class="ql-edit-mode-btn" data-action="ql-toggle-edit">${qlEditMode?'✓ GOTOWE':'EDYCJA'}</button>`
+    +`<button class="ql-json-btn" data-action="ql-json" title="Połącz plik JSON z Dropbox">JSON</button>`;
+  bar.classList.toggle('edit-mode',qlEditMode);
+  if(qlEditMode&&links.length>1){
+    qlSortable=Sortable.create(bar,{
+      draggable:'.ql-item',animation:150,
+      onEnd(){
+        const ids=[...bar.querySelectorAll('.ql-item')].map(el=>el.dataset.qlId);
+        state.quicklinks=ids.map(id=>(state.quicklinks||[]).find(l=>l.id===id)).filter(Boolean);
+        save();
+      }
+    });
+  }
+}
+function showFileMenu(refEl){
+  const menu=document.createElement('div');
+  menu.style.cssText='position:fixed;background:var(--card);border:1px solid var(--border2);border-radius:7px;padding:4px 0;z-index:9999;box-shadow:0 6px 20px rgba(0,0,0,.6);min-width:200px;';
+  const r=refEl.getBoundingClientRect();
+  menu.style.top=(r.bottom+4)+'px';menu.style.right=(window.innerWidth-r.right)+'px';
+  const itemStyle='padding:7px 14px;font-size:12px;color:var(--dark2);cursor:pointer;display:block;width:100%;background:none;border:none;text-align:left;';
+  menu.innerHTML=`<button style="${itemStyle}" id="_fmOpen">📂 Otwórz istniejący plik</button><button style="${itemStyle}" id="_fmNew">✨ Utwórz nowy plik</button>`;
+  document.body.appendChild(menu);
+  menu.querySelector('#_fmOpen').addEventListener('click',()=>{menu.remove();connectExistingFile();});
+  menu.querySelector('#_fmNew').addEventListener('click',()=>{menu.remove();createNewFile();});
+  menu.querySelectorAll('button').forEach(b=>{b.addEventListener('mouseenter',()=>b.style.background='var(--border)');b.addEventListener('mouseleave',()=>b.style.background='none');});
+  setTimeout(()=>document.addEventListener('click',()=>menu.remove(),{once:true}),50);
+}
+// ── GALLERY ──────────────────────────────────────────
+function galFileIcon(type){
+  if(type==='pdf') return '📋';
+  return '📄';
+}
+function renderGallery(){
+  const grid=document.getElementById('galleryGrid');if(!grid)return;
+  const items=state.gallery||[];
+  grid.innerHTML=items.map(g=>{
+    if(g.type==='image'||!g.type){
+      return`<div class="gallery-thumb-wrap"><img class="gallery-thumb" src="${g.data}" alt="${esc(g.name)}" data-gal-id="${g.id}" title="${esc(g.name)}"><button class="gallery-thumb-del" data-action="gal-del" data-gal-id="${g.id}">✕</button></div>`;
+    }
+    return`<div class="gallery-file-wrap" data-gal-id="${g.id}" data-gal-type="${g.type}" title="${esc(g.name)}"><span class="gallery-file-icon">${galFileIcon(g.type)}</span><span class="gallery-file-name">${esc(g.name)}</span><button class="gallery-thumb-del" data-action="gal-del" data-gal-id="${g.id}">✕</button></div>`;
+  }).join('');
+}
+function addGalleryImages(files){
+  Array.from(files).forEach(f=>{
+    const isImage=f.type.startsWith('image/');
+    const isPdf=f.type==='application/pdf'||f.name.toLowerCase().endsWith('.pdf');
+    const isTxt=f.type==='text/plain'||f.name.toLowerCase().endsWith('.txt');
+    if(!isImage&&!isPdf&&!isTxt) return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      if(!state.gallery)state.gallery=[];
+      const type=isImage?'image':isPdf?'pdf':'txt';
+      if(isImage){
+        const img=new Image();
+        img.onload=()=>{
+          const MAX=1400,c=document.createElement('canvas');
+          let w=img.width,h=img.height;
+          if(w>MAX||h>MAX){const ratio=MAX/Math.max(w,h);w=Math.round(w*ratio);h=Math.round(h*ratio);}
+          c.width=w;c.height=h;
+          c.getContext('2d').drawImage(img,0,0,w,h);
+          state.gallery.push({id:uid(),name:f.name,data:c.toDataURL('image/jpeg',.85),type});
+          save();renderGallery();
+        };
+        img.src=ev.target.result;
+      } else {
+        state.gallery.push({id:uid(),name:f.name,data:ev.target.result,type});
+        save();renderGallery();
+      }
+    };
+    r.readAsDataURL(f);
+  });
+}
+let lbImageIds=[],lbIdx=0;
+function openLightbox(galId){
+  lbImageIds=(state.gallery||[]).filter(g=>g.type==='image'||!g.type).map(g=>g.id);
+  lbIdx=lbImageIds.indexOf(galId);
+  if(lbIdx<0) lbIdx=0;
+  _showLbFrame(lbIdx);
+  document.getElementById('galleryLightbox').classList.add('open');
+}
+function _showLbFrame(idx){
+  lbIdx=((idx%lbImageIds.length)+lbImageIds.length)%lbImageIds.length;
+  const item=(state.gallery||[]).find(g=>g.id===lbImageIds[lbIdx]);
+  if(item) document.getElementById('galleryLightbox').querySelector('img').src=item.data;
+  const multi=lbImageIds.length>1;
+  document.getElementById('lbPrev').style.display=multi?'':'none';
+  document.getElementById('lbNext').style.display=multi?'':'none';
+  document.getElementById('lbCounter').textContent=multi?`${lbIdx+1} / ${lbImageIds.length}`:'';
+}
+function closeLightbox(){document.getElementById('galleryLightbox').classList.remove('open');}
+// ── RECURRING TASKS ──────────────────────────────────
+function seedRecurringTasks(){
+  const today=todayStr();
+  const START='2026-04-23';
+  const allWgc=state.tasks.filter(t=>t.game==='The Gang'&&t.title==='WGC LOGO NEW').sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const last=allWgc[0];
+  let nextDate;
+  if(!last){
+    if(today<START) return;
+    nextDate=START;
+  } else {
+    if(!last.date){return;}
+    const lastD=new Date(last.date+'T00:00:00');
+    const nextD=new Date(lastD);nextD.setDate(nextD.getDate()+30);
+    nextDate=nextD.toISOString().slice(0,10);
+    if(today<nextDate) return;
+  }
+  const nd=new Date(nextDate+'T00:00:00');nd.setDate(nd.getDate()+6);
+  const deadline=`${p2(nd.getDate())}.${p2(nd.getMonth()+1)}`;
+  state.tasks.push({id:uid(),game:'The Gang',title:'WGC LOGO NEW',date:nextDate,note:'',
+    status:'active',priority:false,weekKey:isoWeekKey(new Date()),
+    order:0,attachments:[],
+    subtasks:[
+      {id:uid(),title:`waiting for contact (do ${deadline})`,done:false},
+      {id:uid(),title:'references received',done:false},
+      {id:uid(),title:'references shared with the team',done:false},
+      {id:uid(),title:'project 1 shared with winners',done:false},
+      {id:uid(),title:'in-game message to the winners Boss, Dpts: sent here https://the-gang.admin-gamesture.com/tools/personal-messages/details/1186?__game=Gang',done:false},
+    ],
+    link:null});
+  save();
+}
+
+// ═══════════════════════════════════════
+// DATE TOGGLE
+// ═══════════════════════════════════════
+function showDateInput(el){
+  const card=el.closest('.task-card');if(!card)return;
+  const id=card.dataset.id;
+  const inp=card.querySelector('.date-input');
+  const chip=card.querySelector('.date-chip');
+  const addBtn=card.querySelector('[data-action="show-date"]');
+  if(chip) chip.style.display='none';
+  if(addBtn) addBtn.style.display='none';
+  if(inp){
+    const t=taskById(id);
+    if(t&&t.date&&!inp.value) inp.value=toDisplayDate(t.date);
+    inp.style.display='';inp.focus();
+  }
+}
+
+// ═══════════════════════════════════════
+// INLINE RENAME
+// ═══════════════════════════════════════
+function startRename(el){
+  const oldName=el.dataset.game;
+  const inp=document.createElement('input');
+  inp.type='text';inp.value=oldName;
+  inp.className='form-control form-control-sm d-inline-block';
+  inp.style.cssText='width:140px;font-size:12px;height:24px;padding:2px 6px;';
+  el.replaceWith(inp);inp.focus();inp.select();
+  function commit(){
+    const name=inp.value.trim();
+    if(name&&name!==oldName){
+      const i=state.games.findIndex(g=>g.name===oldName);
+      if(i>=0) state.games[i].name=name;
+      state.tasks.forEach(t=>{if(t.game===oldName) t.game=name;});save();
+    }
+    renderApp();
+  }
+  inp.addEventListener('blur',commit);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();inp.blur();}if(e.key==='Escape')renderApp();});
+}
+
+// ═══════════════════════════════════════
+// HIGHLIGHT + SCROLL TO TASK
+// ═══════════════════════════════════════
+function highlightTask(id){
+  requestAnimationFrame(()=>{
+    const card=document.querySelector(`.task-card[data-id="${id}"]`);
+    if(!card) return;
+    // Scroll game column into horizontal view first
+    const col=card.closest('.game-col');
+    if(col) col.scrollIntoView({behavior:'smooth',inline:'nearest',block:'nearest'});
+    // Then scroll card into vertical view
+    setTimeout(()=>{
+      card.scrollIntoView({behavior:'smooth',block:'center',inline:'nearest'});
+      card.classList.add('hl');
+      setTimeout(()=>card.classList.remove('hl'),1500);
+    },250);
+  });
+}
+
+// ═══════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function autoResize(el){el.style.height='0';el.style.height=el.scrollHeight+'px';}
+function formatWithTimes(text){
+  return esc(text).replace(/\b(\d{1,2}:\d{2})\b/g,'<span class="time-hl">$1</span>');
+}
+function formatNoteLinks(text){
+  if(!text) return '';
+  return text.split(/(https?:\/\/[^\s]+)/g).map((part,i)=>{
+    if(i%2===1) return`<a href="${esc(part)}" target="_blank" rel="noopener" class="note-link">${esc(part)}</a>`;
+    return esc(part).replace(/\n/g,'<br>');
+  }).join('');
+}
+function formatSubtaskTitle(text){
+  if(!text) return '';
+  return text.split(/(https?:\/\/[^\s]+)/g).map((part,i)=>{
+    if(i%2===1) return`<a href="${esc(part)}" target="_blank" rel="noopener" class="note-link">${esc(part)}</a>`;
+    return esc(part).replace(/\b(\d{1,2}:\d{2})\b/g,'<span class="time-hl">$1</span>');
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════
+let pendingTaskLink=null;
+function setAtLinkBadge(url){
+  pendingTaskLink=url||null;
+  const badge=document.getElementById('atLinkBadge');
+  const span=document.getElementById('atLinkBadgeUrl');
+  if(url){badge.style.display='flex';span.textContent=url;}
+  else{badge.style.display='none';span.textContent='';}
+}
+function openAddTask(game){
+  document.getElementById('atGame').innerHTML=state.games.map(g=>
+    `<option value="${esc(g.name)}" ${g.name===game?'selected':''}>${esc(g.name)}</option>`).join('');
+  ['atTitle','atNote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('atDate').value='';
+  setAtLinkBadge(null);
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('addTaskModal')).show();
+  setTimeout(()=>document.getElementById('atTitle').focus(),350);
+}
+let lastCreatedId=null;
+function saveNewTask(){
+  const title=document.getElementById('atTitle').value.trim();
+  if(!title){document.getElementById('atTitle').focus();return;}
+  const game=document.getElementById('atGame').value;
+  const date=parseDisplayDate(document.getElementById('atDate').value)||null;
+  const note=document.getElementById('atNote').value.trim();
+  const wk=currentWeekKey;
+  const order=state.tasks.filter(t=>t.game===game&&t.weekKey===wk).length;
+  const newId=uid();
+  lastCreatedId=newId;
+  pushTask({id:newId,game,title,date,note,status:'active',priority:false,weekKey:wk,order,attachments:[],subtasks:[],link:pendingTaskLink||null});
+  setAtLinkBadge(null);
+  bootstrap.Modal.getInstance(document.getElementById('addTaskModal')).hide();
+}
+function openAddGame(){
+  document.getElementById('agName').value='';
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('addGameModal')).show();
+  setTimeout(()=>document.getElementById('agName').focus(),350);
+}
+function saveNewGame(){
+  const name=document.getElementById('agName').value.trim();
+  const color=document.getElementById('agColor').value||'#7aa2f7';
+  if(!name)return;
+  if(state.games.find(g=>g.name===name)){alert('Gra o tej nazwie już istnieje.');return;}
+  state.games.push({name,icon:null,color});save();
+  bootstrap.Modal.getInstance(document.getElementById('addGameModal')).hide();
+  renderApp();
+}
+function copyToNextWeek(){
+  const nextWk=shiftWeek(currentWeekKey,1);
+  const toCopy=state.tasks.filter(t=>t.weekKey===currentWeekKey&&t.status!=='done');
+  if(!toCopy.length){alert('Brak niezakończonych zadań do skopiowania.');return;}
+  if(!confirm(`Skopiować ${toCopy.length} zadań do\n${fmtWeek(nextWk)}?`))return;
+  toCopy.forEach((t,i)=>pushTask({...t,id:uid(),date:null,status:'active',weekKey:nextWk,order:i}));
+  currentWeekKey=nextWk;renderApp();
+}
+
+// ═══════════════════════════════════════
+// NOTES ACTIONS
+// ═══════════════════════════════════════
+function addNote(){
+  if(!Array.isArray(state.notes)) state.notes=[];
+  state.notes.push({id:uid(),text:'',color:'#1e0806'});
+  save();renderNotes();
+  requestAnimationFrame(()=>{const ns=document.querySelectorAll('.note-ta.editing,.note-card.note-empty .note-ta');if(ns.length)ns[ns.length-1].focus();});
+}
+function deleteNote(noteId){
+  state.notes=(state.notes||[]).filter(n=>n.id!==noteId);
+  save();renderNotes();
+}
+function setNoteColor(noteId,color){
+  const n=(state.notes||[]).find(x=>x.id===noteId);
+  if(n){n.color=color;save();renderNotes();}
+}
+function saveNoteText(noteId,text){
+  const n=(state.notes||[]).find(x=>x.id===noteId);
+  if(n){n.text=text;save();}
+}
+
+// ═══════════════════════════════════════
+// ATTACHMENTS
+// ═══════════════════════════════════════
+function handleAttachUploadFiles(taskId,files){
+  if(!taskId||!files.length)return;
+  const t=taskById(taskId);if(!t)return;
+  if(!t.attachments)t.attachments=[];
+  let remaining=files.length;
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      if(file.type.startsWith('image/')){
+        const img=new Image();
+        img.onload=()=>{
+          const MAX=700,c=document.createElement('canvas');
+          let w=img.width,h=img.height;
+          if(w>MAX||h>MAX){const r=MAX/Math.max(w,h);w=Math.round(w*r);h=Math.round(h*r);}
+          c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
+          t.attachments.push({id:uid(),name:file.name,type:file.type,data:c.toDataURL('image/jpeg',.85)});
+          if(!--remaining){save();expandedCards.add(taskId);renderApp();}
+        };img.src=ev.target.result;
+      }else{
+        t.attachments.push({id:uid(),name:file.name,type:file.type,data:ev.target.result});
+        if(!--remaining){save();expandedCards.add(taskId);renderApp();}
+      }
+    };reader.readAsDataURL(file);
+  });
+}
+
+// ═══════════════════════════════════════
+// SUBTASKS
+// ═══════════════════════════════════════
+function toggleSubtask(taskId,subId){
+  const t=taskById(taskId);if(!t)return;
+  const s=t.subtasks.find(x=>x.id===subId);if(!s)return;
+  s.done=!s.done;
+  if(t.subtasks.length&&t.subtasks.every(x=>x.done)) patchTask(taskId,{subtasks:t.subtasks,status:'done'});
+  else patchTask(taskId,{subtasks:t.subtasks,status:t.status==='done'&&!t.subtasks.every(x=>x.done)?'active':t.status});
+  renderApp();
+}
+function patchSubtask(taskId,subId,updates){
+  const t=taskById(taskId);if(!t)return;
+  const s=t.subtasks.find(x=>x.id===subId);if(!s)return;
+  Object.assign(s,updates);patchTask(taskId,{subtasks:t.subtasks});
+}
+function deleteSubtask(taskId,subId){
+  const t=taskById(taskId);if(!t)return;
+  t.subtasks=t.subtasks.filter(x=>x.id!==subId);
+  patchTask(taskId,{subtasks:t.subtasks});renderApp();
+}
+function addSubtask(taskId,title){
+  const t=taskById(taskId);if(!t||!title.trim())return;
+  if(!t.subtasks)t.subtasks=[];
+  t.subtasks.push({id:uid(),title:title.trim(),done:false});
+  patchTask(taskId,{subtasks:t.subtasks});
+  expandedCards.add(taskId);renderApp();
+  // Refocus the input after render
+  requestAnimationFrame(()=>{
+    const inp=document.querySelector(`.subtask-inp[data-id="${taskId}"]`);
+    if(inp) inp.focus();
+  });
+}
+
+// ═══════════════════════════════════════
+// CONTEXT MENU
+// ═══════════════════════════════════════
+let ctxTaskId=null,ctxSubtaskId=null;
+function showCtxMenu(x,y,taskId,subId=null){
+  ctxTaskId=taskId;ctxSubtaskId=subId;
+  const t=taskById(taskId);
+  const isCurrentWk=t&&t.weekKey===isoWeekKey(new Date());
+  const isSub=!!subId;
+  const show=id=>document.getElementById(id).style.display='flex';
+  const hide=id=>document.getElementById(id).style.display='none';
+  isSub?hide('ctxEditTitle'):show('ctxEditTitle');
+  isSub?show('ctxEditSubtask'):hide('ctxEditSubtask');
+  isSub?hide('ctxMoveNext'):show('ctxMoveNext');
+  (isSub||isCurrentWk)?hide('ctxMoveCurrent'):show('ctxMoveCurrent');
+  const menu=document.getElementById('ctxMenu');
+  menu.style.display='block';
+  const items=[...menu.querySelectorAll('.ctx-item')].filter(el=>el.style.display!=='none').length;
+  menu.style.left=Math.min(x,window.innerWidth-230)+'px';
+  menu.style.top=Math.min(y,window.innerHeight-items*36-8)+'px';
+}
+function hideCtxMenu(){
+  document.getElementById('ctxMenu').style.display='none';
+  ctxTaskId=null;ctxSubtaskId=null;
+}
+function startEditTaskTitle(id){
+  const card=document.querySelector(`.task-card[data-id="${id}"]`);if(!card)return;
+  card.classList.add('expanded','editing');expandedCards.add(id);
+  const ta=card.querySelector('.card-title');
+  if(ta) requestAnimationFrame(()=>{autoResize(ta);ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);});
+}
+function startEditSubtaskTitle(taskId,subId){
+  const card=document.querySelector(`.task-card[data-id="${taskId}"]`);
+  if(card){card.classList.add('expanded');expandedCards.add(taskId);}
+  const sub=document.querySelector(`.subtask[data-subtask-id="${subId}"]`);if(!sub)return;
+  const span=sub.querySelector('.subtask-title');if(!span)return;
+  const rawText=span.textContent;
+  const ta=document.createElement('textarea');
+  ta.value=rawText;
+  ta.rows=1;
+  ta.style.cssText='font-size:11px;background:transparent;border:none;border-bottom:1px solid var(--blue);outline:none;color:var(--dark2);flex:1;min-width:0;padding:0;resize:none;overflow:hidden;line-height:1.45;font-family:inherit;';
+  span.replaceWith(ta);
+  autoResize(ta);
+  ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);
+  ta.addEventListener('input',()=>autoResize(ta));
+  const commit=()=>{const val=ta.value.trim()||rawText;patchSubtask(taskId,subId,{title:val});expandedCards.add(taskId);renderApp();};
+  ta.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&!ev.shiftKey){ev.preventDefault();commit();}if(ev.key==='Escape'){expandedCards.add(taskId);renderApp();}});
+  ta.addEventListener('blur',commit,{once:true});
+}
+function moveTaskToNextWeek(id){
+  const t=taskById(id);if(!t)return;
+  const nextWk=shiftWeek(currentWeekKey,1);
+  const updates={weekKey:nextWk};
+  if(t.date){
+    const[y,m,d]=t.date.split('-').map(Number);
+    const nd=new Date(y,m-1,d);nd.setDate(nd.getDate()+7);
+    updates.date=`${nd.getFullYear()}-${p2(nd.getMonth()+1)}-${p2(nd.getDate())}`;
+  }
+  patchTask(id,updates);renderApp();
+}
+function moveTaskToCurrentWeek(id){
+  const t=taskById(id);if(!t)return;
+  patchTask(id,{weekKey:isoWeekKey(new Date())});
+  currentWeekKey=isoWeekKey(new Date());
+  renderApp();
+}
+
+// ═══════════════════════════════════════
+// DAILY TASKS
+// ═══════════════════════════════════════
+const DAILY_TASKS=[
+  {title:'Morning Support Check', link:'https://gamesture.helpshift.com/admin/issues/0-91/'},
+  {title:'TG refunds check'},
+  {title:'FB posts Accept'},
+  {title:'FB/DC dms check'},
+  {title:'12:00 Support Check', link:'https://gamesture.helpshift.com/admin/issues/0-91/'},
+  {title:'Store Reviews', link:'http://tools-01.gannet-kitefin.ts.net:5566/inbox'},
+];
+function rolloverIncompleteTasks(){
+  const thisWk=isoWeekKey(new Date());
+  let changed=false;
+  state.tasks.forEach(t=>{
+    if(t.status==='active'&&t.weekKey&&t.weekKey<thisWk){
+      t.weekKey=thisWk;changed=true;
+    }
+  });
+  if(changed) save();
+}
+function seedDailyTasks(){
+  const today=todayStr(),todayWk=isoWeekKey(new Date());
+  // Remove legacy individual daily tasks (replaced by DAILY BREAD subtasks)
+  const dailyTitles=new Set(DAILY_TASKS.map(t=>t.title));
+  const before=state.tasks.length;
+  state.tasks=state.tasks.filter(t=>!(t.game==='Ogólne'&&t.date===today&&dailyTitles.has(t.title)));
+  if(state.tasks.length!==before) save();
+  const exists=state.tasks.some(t=>t.game==='Ogólne'&&t.date===today&&t.title==='DAILY BREAD');
+  if(exists) return;
+  state.tasks.push({
+    id:uid(),game:'Ogólne',title:'DAILY BREAD',date:today,note:'',
+    status:'active',priority:false,weekKey:todayWk,order:0,
+    attachments:[],
+    subtasks:DAILY_TASKS.map(({title})=>({id:uid(),title,done:false})),
+    link:null
+  });
+  save();
+}
+
+// ═══════════════════════════════════════
+// PDF EXPORT
+// ═══════════════════════════════════════
+function exportToPdf(){
+  const GAME_ORDER=['Ogólne','The Gang','Cooking Wars','Mafia Rivals'];
+  const week=fmtWeek(currentWeekKey);
+  const orderedGames=[...GAME_ORDER,...state.games.map(g=>g.name).filter(n=>!GAME_ORDER.includes(n))];
+  const usedGames=orderedGames.filter(name=>state.games.find(g=>g.name===name));
+
+  function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  function subtaskHtml(s){
+    return`<li class="${s.done?'done-sub':''}"><span class="sub-cb">${s.done?'✓':''}</span>${escH(s.title)}</li>`;
+  }
+
+  function taskItemHtml(t,isDone){
+    const subs=(t.subtasks||[]);
+    const subsHtml=subs.length?`<ul class="subtasks">${subs.map(subtaskHtml).join('')}</ul>`:'';
+    const noteHtml=(t.note&&t.note.trim())?`<div class="task-note">${escH(t.note)}</div>`:'';
+    const dateStr=t.date?` <span class="task-date">${fmtDate(t.date)}</span>`:'';
+    return`<div class="task-item${isDone?' task-done':''}">
+      <div class="task-header"><span class="task-cb">${isDone?'✓':''}</span><span class="task-title">${escH(t.title)}</span>${dateStr}</div>
+      ${subsHtml}${noteHtml}
+    </div>`;
+  }
+
+  let sectionsHtml='';
+  usedGames.forEach(gameName=>{
+    const wkTasks=state.tasks.filter(t=>t.game===gameName&&t.weekKey===currentWeekKey);
+    if(!wkTasks.length) return;
+    const active=wkTasks.filter(t=>t.status==='active'||t.status==='ongoing').sort((a,b)=>{
+      const ad=a.date||'',bd=b.date||'';
+      if(!ad&&!bd) return (a.order||0)-(b.order||0);
+      if(!ad) return -1; if(!bd) return 1;
+      return ad.localeCompare(bd);
+    });
+    const done=wkTasks.filter(t=>t.status==='done').sort((a,b)=>(a.order||0)-(b.order||0));
+    if(!active.length&&!done.length) return;
+    const col=gameColor(gameName);
+    sectionsHtml+=`<div class="section">
+      <h2 class="section-title" style="border-left-color:${escH(col)}">${escH(gameName)}</h2>
+      ${active.map(t=>taskItemHtml(t,false)).join('')}
+      ${done.length?`<div class="done-divider">— Ukończone (${done.length}) —</div>${done.map(t=>taskItemHtml(t,true)).join('')}`:''}
+    </div>`;
+  });
+
+  if(!sectionsHtml){alert('Brak zadań w bieżącym tygodniu.');return;}
+
+  const html=`<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>Task Manager — ${escH(week)}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,'Segoe UI',Roboto,sans-serif;font-size:13px;color:#1a1b26;background:#fff;padding:24px 32px;max-width:820px;margin:0 auto;}
+h1{font-size:20px;font-weight:800;color:#1a1b26;margin-bottom:2px;}
+.week-range{font-size:12px;color:#666;margin-bottom:24px;padding-bottom:12px;border-bottom:2px solid #e8eaf2;}
+.section{margin-bottom:28px;}
+.section-title{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:#1a1b26;border-left:4px solid #7aa2f7;padding:3px 0 3px 10px;margin-bottom:10px;}
+.task-item{padding:7px 9px;margin-bottom:5px;border-radius:5px;background:#f7f8fc;border:1px solid #e4e7f2;}
+.task-done{opacity:.45;}
+.task-header{display:flex;align-items:baseline;gap:6px;}
+.task-cb{width:14px;height:14px;border:2px solid #b8bedd;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#5a9e72;flex-shrink:0;line-height:1;margin-top:1px;}
+.task-done .task-cb{background:#5a9e72;border-color:#5a9e72;color:#fff;}
+.task-title{font-size:12px;font-weight:600;flex:1;line-height:1.4;}
+.task-done .task-title{text-decoration:line-through;color:#999;}
+.task-date{font-size:10px;color:#888;white-space:nowrap;flex-shrink:0;}
+.subtasks{list-style:none;padding-left:18px;margin-top:5px;}
+.subtasks li{font-size:11px;color:#444;padding:2px 0;display:flex;align-items:baseline;gap:5px;line-height:1.4;}
+.sub-cb{font-size:8px;color:#b8bedd;flex-shrink:0;width:10px;}
+.done-sub .sub-cb{color:#5a9e72;}
+.subtasks li.done-sub{color:#aaa;text-decoration:line-through;}
+.task-note{font-size:10.5px;color:#666;margin-top:5px;padding:4px 8px;border-left:2px solid #d8ddf0;background:#f0f2fa;border-radius:0 3px 3px 0;white-space:pre-wrap;font-style:italic;line-height:1.5;}
+.done-divider{font-size:10px;color:#aaa;text-align:center;margin:8px 0 6px;letter-spacing:.05em;}
+@media print{
+  body{padding:15px 20px;}
+  .section{page-break-inside:avoid;}
+}
+</style>
+</head>
+<body>
+<h1>📋 Task Manager</h1>
+<div class="week-range">Tydzień: ${escH(week)}</div>
+${sectionsHtml}
+<script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script>
+</body>
+</html>`;
+
+  const w=window.open('','_blank');
+  if(w){w.document.write(html);w.document.close();}
+}
+
+// ═══════════════════════════════════════
+// EVENT LISTENERS
+// ═══════════════════════════════════════
+function initListeners(){
+  document.getElementById('btnPrev').addEventListener('click',()=>{currentWeekKey=shiftWeek(currentWeekKey,-1);renderApp();});
+  document.getElementById('btnNext').addEventListener('click',()=>{currentWeekKey=shiftWeek(currentWeekKey,1);renderApp();});
+  document.getElementById('btnToday').addEventListener('click',()=>{currentWeekKey=isoWeekKey(new Date());renderApp();});
+  document.getElementById('atSave').addEventListener('click',saveNewTask);
+  document.getElementById('btnFileDisconnect').addEventListener('click',disconnectFile);
+  document.getElementById('btnExportPdf').addEventListener('click',exportToPdf);
+  document.getElementById('globalQlBar').addEventListener('click',e=>{
+    const btn=e.target.closest('[data-action]');if(!btn)return;
+    const action=btn.dataset.action,qlId=btn.dataset.qlId;
+    if(action==='ql-open'){openQlModal();}
+    else if(action==='ql-edit'&&qlId){e.preventDefault();openQlModal(qlId);}
+    else if(action==='ql-del'&&qlId){delQlLink(qlId);}
+    else if(action==='ql-toggle-edit'){qlEditMode=!qlEditMode;renderGlobalQlBar();}
+    else if(action==='ql-json'){showFileMenu(btn);}
+  });
+  // Gallery
+  const galleryDrop=document.getElementById('galleryDrop');
+  const galleryFileInp=document.getElementById('galleryFileInp');
+  galleryDrop.addEventListener('click',e=>{
+    if(e.target.closest('[data-action]')) return;
+    if(e.target.closest('.gallery-thumb')||e.target.closest('.gallery-file-wrap')) return;
+    galleryFileInp.click();
+  });
+  galleryFileInp.addEventListener('change',e=>{addGalleryImages(e.target.files);e.target.value='';});
+  galleryDrop.addEventListener('dragover',e=>{e.preventDefault();galleryDrop.classList.add('drag-over');});
+  galleryDrop.addEventListener('dragleave',()=>galleryDrop.classList.remove('drag-over'));
+  galleryDrop.addEventListener('drop',e=>{e.preventDefault();galleryDrop.classList.remove('drag-over');addGalleryImages(e.dataTransfer.files);});
+  galleryDrop.addEventListener('click',e=>{
+    const btn=e.target.closest('[data-action]');if(!btn)return;
+    if(btn.dataset.action==='gal-del'){const id=btn.dataset.galId;state.gallery=(state.gallery||[]).filter(g=>g.id!==id);save();renderGallery();}
+  });
+  galleryDrop.addEventListener('click',e=>{
+    const img=e.target.closest('.gallery-thumb');if(img){openLightbox(img.dataset.galId);return;}
+    const fw=e.target.closest('.gallery-file-wrap');if(!fw)return;
+    const id=fw.dataset.galId;
+    const item=(state.gallery||[]).find(g=>g.id===id);if(!item)return;
+    const w=window.open();w.document.write(`<html><head><title>${esc(item.name)}</title></head><body style="margin:0;background:#111"><embed src="${item.data}" width="100%" height="100%" style="min-height:100vh"></body></html>`);
+  });
+  const lb=document.getElementById('galleryLightbox');
+  lb.addEventListener('click',e=>{if(e.target===lb)closeLightbox();});
+  document.getElementById('lbClose').addEventListener('click',closeLightbox);
+  document.getElementById('lbPrev').addEventListener('click',e=>{e.stopPropagation();_showLbFrame(lbIdx-1);});
+  document.getElementById('lbNext').addEventListener('click',e=>{e.stopPropagation();_showLbFrame(lbIdx+1);});
+  document.addEventListener('keydown',e=>{
+    if(!lb.classList.contains('open'))return;
+    if(e.key==='ArrowLeft'){e.preventDefault();_showLbFrame(lbIdx-1);}
+    else if(e.key==='ArrowRight'){e.preventDefault();_showLbFrame(lbIdx+1);}
+    else if(e.key==='Escape'){closeLightbox();}
+  });
+  document.getElementById('sbGalleryToggle').addEventListener('click',()=>{
+    document.getElementById('sbGallery').classList.toggle('collapsed');
+  });
+  document.getElementById('sbTgeToggle').addEventListener('click',()=>{
+    document.getElementById('sbTge').classList.toggle('collapsed');
+  });
+  document.getElementById('sbNotesToggle').addEventListener('click',()=>{
+    document.getElementById('sbNotes').classList.toggle('collapsed');
+  });
+
+  document.getElementById('qlIconGrid').addEventListener('click',e=>{
+    const opt=e.target.closest('.ql-ic-opt');if(!opt)return;
+    qlSelectedIcon=opt.dataset.icon;
+    document.querySelectorAll('#qlIconGrid .ql-ic-opt').forEach(el=>el.classList.toggle('selected',el.dataset.icon===qlSelectedIcon));
+  });
+  document.getElementById('qlSave').addEventListener('click',saveQlLink);
+  document.getElementById('qlClose').addEventListener('click',closeQlModal);
+  document.getElementById('qlModal').addEventListener('click',e=>{if(e.target.id==='qlModal')closeQlModal();});
+  document.getElementById('qlUrl').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('qlLabel').focus();if(e.key==='Escape')closeQlModal();});
+  document.getElementById('qlLabel').addEventListener('keydown',e=>{if(e.key==='Enter')saveQlLink();if(e.key==='Escape')closeQlModal();});
+  document.getElementById('addTaskModal').addEventListener('hidden.bs.modal',()=>{
+    if(!lastCreatedId)return;
+    const id=lastCreatedId;lastCreatedId=null;
+    renderApp();
+    requestAnimationFrame(()=>{
+      const card=document.querySelector(`.task-card[data-id="${id}"]`);if(!card)return;
+      card.scrollIntoView({behavior:'smooth',block:'nearest'});
+    });
+  });
+  document.getElementById('agSave').addEventListener('click',saveNewGame);
+  document.getElementById('atTitle').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();document.getElementById('atSave').click();}});
+  document.getElementById('atTitle').addEventListener('paste',e=>{
+    const url=(e.clipboardData||window.clipboardData).getData('text').trim();
+    if(!/^https?:\/\//i.test(url))return;
+    const inp=e.target;
+    if(inp.selectionStart===inp.selectionEnd)return;
+    e.preventDefault();
+    setAtLinkBadge(url);
+  });
+  document.getElementById('atLinkBadgeDel').addEventListener('click',()=>setAtLinkBadge(null));
+
+  // Board paste → card-title: selected text + URL = link
+  document.getElementById('board').addEventListener('paste',e=>{
+    if(!e.target.classList.contains('card-title'))return;
+    const url=(e.clipboardData||window.clipboardData).getData('text').trim();
+    if(!/^https?:\/\//i.test(url))return;
+    const ta=e.target;
+    if(ta.selectionStart===ta.selectionEnd)return;
+    e.preventDefault();
+    const id=ta.dataset.id;if(!id)return;
+    patchTask(id,{link:url});
+    const card=ta.closest('.task-card');
+    if(card){
+      const disp=card.querySelector('.title-display');
+      if(disp) disp.innerHTML=formatWithTimes(ta.value)+`<span class="link-icon" data-action="open-link" data-link="${esc(url)}" data-id="${id}" title="Otwórz link">↗</span>`;
+    }
+  });
+  document.getElementById('agName').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('agSave').click();});
+  document.getElementById('ongHdr').addEventListener('click',()=>{
+    ongOpen=!ongOpen;
+    document.getElementById('ongBody').classList.toggle('collapsed',!ongOpen);
+    document.getElementById('ongToggleBtn').textContent=ongOpen?'▼':'▶';
+  });
+
+  // Track last clicked task card
+  document.getElementById('board').addEventListener('click',e=>{
+    const card=e.target.closest('.task-card');
+    if(card) lastClickedTaskId=card.dataset.id;
+  },true);
+
+  // Board click delegation
+  document.getElementById('board').addEventListener('click',e=>{
+    if(e.target.classList.contains('col-name')){startRename(e.target);return;}
+    if(e.target.dataset.delGame){deleteGame(e.target.dataset.delGame);return;}
+    if(e.target.dataset.addGame!==undefined){openAddTask(e.target.dataset.addGame);return;}
+    const action=e.target.dataset.action||e.target.closest('[data-action]')?.dataset.action;
+    const id=e.target.dataset.id||e.target.closest('[data-id]')?.dataset.id;
+    if(!action||!id)return;
+    if(action==='toggle') toggleDone(id);
+    else if(action==='priority') togglePriority(id);
+    else if(action==='to-ongoing') moveToOngoing(id);
+    else if(action==='del') deleteTask(id);
+    else if(action==='dup') duplicateTask(id);
+    else if(action==='show-date'||action==='edit-date') showDateInput(e.target);
+    else if(action==='edit-sub-date'||action==='add-sub-date'){
+      const sub=e.target.closest('.subtask');if(!sub)return;
+      const inp=sub.querySelector('.sub-date-inp');if(!inp)return;
+      e.target.style.display='none';
+      inp.style.display='';
+      requestAnimationFrame(()=>{inp.focus();inp.select();});
+    }
+    else if(action==='open-link'){
+      e.stopPropagation();
+      const link=e.target.dataset.link||e.target.closest('[data-link]')?.dataset.link;
+      if(link) window.open(link,'_blank');
+      return;
+    }
+    else if(action==='expand'){
+      if(e.detail>=2)return; // let dblclick handler take over
+      const card=document.querySelector(`.task-card[data-id="${id}"]`);if(!card)return;
+      const opening=!card.classList.contains('expanded');
+      card.classList.toggle('expanded',opening);
+      if(opening){
+        expandedCards.add(id);
+        const note=card.querySelector('.card-note');
+        if(note) requestAnimationFrame(()=>autoResize(note));
+      }else{
+        expandedCards.delete(id);
+        card.classList.remove('editing');
+        const disp=card.querySelector('.title-display');
+        if(disp){const ta=card.querySelector('.card-title');if(ta)disp.innerHTML=formatWithTimes(ta.value);}
+      }
+    }
+    else if(action==='del-attach'){
+      const attId=e.target.dataset.attId;
+      const t=taskById(id);if(!t)return;
+      t.attachments=(t.attachments||[]).filter(a=>a.id!==attId);
+      save();expandedCards.add(id);renderApp();
+    }
+    else if(action==='view-attach'){
+      const attId=e.target.dataset.attId;
+      const t=taskById(id);if(!t)return;
+      const att=(t.attachments||[]).find(a=>a.id===attId);
+      if(att){const w=window.open();w.document.write(`<img src="${att.data}" style="max-width:100%">`);}
+    }
+    else if(action==='ql-open'){
+      openQlModal();
+    }
+    else if(action==='ql-del'){
+      const qlId=e.target.dataset.qlId;
+      if(qlId) delQlLink(qlId);
+    }
+    else if(action==='toggle-subtask'){
+      const subId=e.target.dataset.subtaskId||e.target.closest('[data-subtask-id]')?.dataset.subtaskId;
+      if(subId) toggleSubtask(id,subId);
+    }
+    else if(action==='del-subtask'){
+      const subId=e.target.dataset.subtaskId||e.target.closest('[data-subtask-id]')?.dataset.subtaskId;
+      if(subId) deleteSubtask(id,subId);
+    }
+  });
+
+  // Board click → note-view clicked (not on a link) → enter note edit mode
+  document.getElementById('board').addEventListener('click',e=>{
+    if(e.target.classList.contains('note-link'))return;
+    const view=e.target.closest('.card-note-view');if(!view)return;
+    const card=view.closest('.task-card');if(!card)return;
+    card.classList.add('note-editing');
+    const ta=card.querySelector('.card-note');
+    if(ta) requestAnimationFrame(()=>{autoResize(ta);ta.focus();});
+  });
+
+  // Board keydown → Enter in subtask-inp / date-input / sub-date-inp
+  document.getElementById('board').addEventListener('keydown',e=>{
+    if(e.target.classList.contains('subtask-inp')){
+      if(e.key==='Enter'){e.preventDefault();addSubtask(e.target.dataset.id,e.target.value);e.target.value='';}
+      if(e.key==='Escape'){e.target.value='';e.target.blur();}
+      return;
+    }
+    if(e.target.classList.contains('date-input')||e.target.classList.contains('sub-date-inp')){
+      if(e.key==='Enter'){e.preventDefault();e.target.blur();}
+      if(e.key==='Escape'){e.target.value='';e.target.blur();}
+      return;
+    }
+  });
+
+  // Context menu
+  document.getElementById('board').addEventListener('contextmenu',e=>{
+    const card=e.target.closest('.task-card');if(!card)return;
+    e.preventDefault();
+    const sub=e.target.closest('.subtask');
+    showCtxMenu(e.clientX,e.clientY,card.dataset.id,sub?sub.dataset.subtaskId:null);
+  });
+  document.getElementById('ctxEditTitle').addEventListener('click',()=>{if(ctxTaskId)startEditTaskTitle(ctxTaskId);hideCtxMenu();});
+  document.getElementById('ctxEditSubtask').addEventListener('click',()=>{if(ctxTaskId&&ctxSubtaskId)startEditSubtaskTitle(ctxTaskId,ctxSubtaskId);hideCtxMenu();});
+  document.getElementById('ctxMoveNext').addEventListener('click',()=>{if(ctxTaskId)moveTaskToNextWeek(ctxTaskId);hideCtxMenu();});
+  document.getElementById('ctxMoveCurrent').addEventListener('click',()=>{if(ctxTaskId)moveTaskToCurrentWeek(ctxTaskId);hideCtxMenu();});
+  document.addEventListener('click',e=>{if(!e.target.closest('#ctxMenu'))hideCtxMenu();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')hideCtxMenu();});
+  document.addEventListener('scroll',hideCtxMenu,true);
+
+  // Board change
+  document.getElementById('board').addEventListener('change',e=>{
+    if(e.target.classList.contains('sub-date-inp')){
+      const{id,subtaskId}=e.target.dataset;if(!id||!subtaskId)return;
+      const date=parseDisplayDate(e.target.value)||null;
+      patchSubtask(id,subtaskId,{date});
+      expandedCards.add(id);renderApp();
+      return;
+    }
+    const{f,id}=e.target.dataset;if(!f||!id)return;
+    if(f==='date'){
+      const date=parseDisplayDate(e.target.value)||null;
+      patchTask(id,{date});renderApp();
+    } else if(f==='title'||f==='note'){
+      patchTask(id,{[f]:e.target.value});
+    }
+  });
+
+  // Board input
+  document.getElementById('board').addEventListener('input',e=>{
+    const{f,id}=e.target.dataset;
+    if(f==='date'){formatDateInput(e.target);return;}
+    if(f==='title'||f==='note'){
+      autoResize(e.target);
+      if(f==='note'){
+        const card=e.target.closest('.task-card');
+        const view=card?.querySelector('.card-note-view');
+        if(view) view.innerHTML=formatNoteLinks(e.target.value);
+        const cardEl=e.target.closest('.task-card');
+        if(cardEl) cardEl.classList.toggle('has-note-content',!!e.target.value.trim());
+      }
+      clearTimeout(e.target._t);
+      e.target._t=setTimeout(()=>patchTask(id,{[f]:e.target.value}),350);
+    }
+  });
+
+  // Board focusout
+  document.getElementById('board').addEventListener('focusout',e=>{
+    if(e.target.classList.contains('sub-date-inp')){
+      const sub=e.target.closest('.subtask');if(!sub)return;
+      e.target.style.display='none';
+      const chip=sub.querySelector('.sub-date-chip');
+      const btn=sub.querySelector('.sub-date-btn');
+      if(chip) chip.style.display='';
+      if(btn) btn.style.display='';
+      return;
+    }
+    if(e.target.classList.contains('card-title')){
+      const card=e.target.closest('.task-card');if(!card)return;
+      card.classList.remove('editing');
+      const disp=card.querySelector('.title-display');
+      if(disp) disp.innerHTML=formatWithTimes(e.target.value);
+      return;
+    }
+    if(e.target.classList.contains('card-note')){
+      const card=e.target.closest('.task-card');if(!card)return;
+      const noteVal=e.target.value;
+      const view=card.querySelector('.card-note-view');
+      if(view) view.innerHTML=formatNoteLinks(noteVal);
+      card.classList.toggle('has-note-content',!!noteVal.trim());
+      card.classList.remove('note-editing');
+      const disp=card.querySelector('.title-display');
+      if(disp) disp.classList.toggle('has-note',!!noteVal.trim());
+      return;
+    }
+    if(!e.target.classList.contains('date-input'))return;
+    if(e.target.value)return;
+    const card=e.target.closest('.task-card');if(!card)return;
+    e.target.style.display='none';
+    const chip=card.querySelector('.date-chip');
+    const addBtn=card.querySelector('[data-action="show-date"]');
+    if(chip) chip.style.display='';
+    if(addBtn) addBtn.style.display='';
+  });
+
+  // Ongoing
+  document.getElementById('ongBody').addEventListener('click',e=>{
+    const action=e.target.dataset.action||e.target.closest('[data-action]')?.dataset.action;
+    const id=e.target.dataset.id||e.target.closest('[data-id]')?.dataset.id;
+    if(!action||!id)return;
+    if(action==='done-ongoing') doneFromOngoing(id);
+    else if(action==='return-ongoing') returnFromOngoing(id);
+  });
+
+  // Drag-over visual
+  const ongList=document.getElementById('ongList');
+  document.addEventListener('dragover',e=>{
+    if(ongList.contains(e.target)||ongList===e.target) ongList.classList.add('drag-over');
+    else ongList.classList.remove('drag-over');
+  });
+  document.addEventListener('drop',()=>ongList.classList.remove('drag-over'));
+
+  // Harmonogram collapse toggle
+  const sbCal=document.getElementById('sbCal');
+  if(localStorage.getItem('cal-collapsed')==='1') sbCal.classList.add('collapsed');
+  document.getElementById('sbCalToggle').addEventListener('click',()=>{
+    sbCal.classList.toggle('collapsed');
+    localStorage.setItem('cal-collapsed',sbCal.classList.contains('collapsed')?'1':'0');
+  });
+
+  // Calendar click → navigate + highlight
+  document.getElementById('calView').addEventListener('click',e=>{
+    const entry=e.target.closest('[data-nav-id]');if(!entry)return;
+    const t=taskById(entry.dataset.navId);if(!t)return;
+    currentWeekKey=t.weekKey;
+    renderApp();
+    highlightTask(t.id);
+  });
+
+  // Notes
+  document.getElementById('notesContainer').addEventListener('click',e=>{
+    if(e.target.classList.contains('note-cdot')){setNoteColor(e.target.dataset.noteId,e.target.dataset.color);return;}
+    if(e.target.dataset.delNote){deleteNote(e.target.dataset.delNote);return;}
+    if(e.target.id==='addNoteBtn'||e.target.closest('#addNoteBtn')){addNote();return;}
+    if(e.target.classList.contains('note-link'))return;
+    const view=e.target.closest('.note-view');if(!view)return;
+    const card=view.closest('.note-card');if(!card)return;
+    const ta=card.querySelector('.note-ta');if(!ta)return;
+    view.classList.add('hidden');ta.classList.add('editing');
+    requestAnimationFrame(()=>{autoResize(ta);ta.focus();});
+  });
+  document.getElementById('notesContainer').addEventListener('input',e=>{
+    if(!e.target.classList.contains('note-ta'))return;
+    autoResize(e.target);
+    const noteId=e.target.dataset.noteId;
+    const card=e.target.closest('.note-card');
+    if(card){
+      const view=card.querySelector('.note-view');
+      if(view) view.innerHTML=formatNoteLinks(e.target.value);
+    }
+    clearTimeout(e.target._t);
+    e.target._t=setTimeout(()=>saveNoteText(noteId,e.target.value),400);
+  });
+  document.getElementById('notesContainer').addEventListener('focusout',e=>{
+    if(!e.target.classList.contains('note-ta'))return;
+    const card=e.target.closest('.note-card');if(!card)return;
+    const view=card.querySelector('.note-view');
+    const hasText=!!e.target.value.trim();
+    card.classList.toggle('note-empty',!hasText);
+    if(view){view.innerHTML=formatNoteLinks(e.target.value);view.classList.remove('hidden');}
+    e.target.classList.remove('editing');
+  });
+
+  // Attachment drag & drop
+  const boardEl=document.getElementById('board');
+  boardEl.addEventListener('dragover',e=>{
+    const card=e.target.closest('.task-card');if(!card)return;
+    e.preventDefault();card.classList.add('drag-over');
+  });
+  boardEl.addEventListener('dragleave',e=>{
+    const card=e.target.closest('.task-card');if(!card)return;
+    if(!card.contains(e.relatedTarget)) card.classList.remove('drag-over');
+  });
+  boardEl.addEventListener('drop',e=>{
+    const card=e.target.closest('.task-card');if(!card)return;
+    card.classList.remove('drag-over');
+    const files=[...e.dataTransfer.files];if(!files.length)return;
+    e.preventDefault();handleAttachUploadFiles(card.dataset.id,files);
+  });
+
+  // Attachment paste (Ctrl+V) → last clicked task card
+  document.addEventListener('paste',e=>{
+    const items=[...(e.clipboardData?.items||[])];
+    const files=items.filter(i=>i.kind==='file').map(i=>i.getAsFile()).filter(Boolean);
+    if(!files.length)return;
+    const id=lastClickedTaskId
+      ||document.activeElement?.closest('.task-card')?.dataset.id
+      ||document.querySelector('.task-card.expanded')?.dataset.id;
+    if(!id)return;
+    e.preventDefault();handleAttachUploadFiles(id,files);
+  });
+
+  // Icon upload
+  document.addEventListener('change',e=>{
+    if(!e.target.classList.contains('icon-file-inp'))return;
+    const gameName=e.target.dataset.game,file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const img=new Image();
+      img.onload=()=>{
+        const c=document.createElement('canvas');c.width=c.height=80;
+        c.getContext('2d').drawImage(img,0,0,80,80);
+        const g=state.games.find(x=>x.name===gameName);
+        if(g){g.icon=c.toDataURL('image/jpeg',.9);save();renderApp();}
+      };img.src=ev.target.result;
+    };reader.readAsDataURL(file);
+  });
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+async function init(){
+  currentWeekKey=isoWeekKey(new Date());
+  const savedHandle=await idbLoadHandle();
+  if(savedHandle){
+    const perm=await savedHandle.queryPermission({mode:'readwrite'});
+    if(perm==='granted'){
+      try{state=await loadFromFile(savedHandle);fileHandle=savedHandle;}
+      catch(err){console.warn('Could not load from file, falling back to localStorage',err);state=loadAndMigrate();}
+    } else {
+      fileHandle=savedHandle; // remember handle for later reconnect
+      state=loadAndMigrate();
+    }
+  } else {
+    state=loadAndMigrate();
+  }
+  if(!state.games.length){state.games=DEFAULT_GAMES.map(g=>({...g}));save();}
+  rolloverIncompleteTasks();
+  seedDailyTasks();
+  seedRecurringTasks();
+  save();
+  updateFileUI();
+  initListeners();
+  renderApp();
+}
+init();
+</script>
+</body>
+</html>
