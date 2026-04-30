@@ -1914,20 +1914,27 @@ function _b64decode(b64){
 }
 
 async function loadFromGitHub(){
-  if(!ghConfig.owner||!ghConfig.repo||!ghConfig.path) return {ok:false};
+  if(!ghConfig.owner||!ghConfig.repo||!ghConfig.path) return {ok:false,errMsg:'Brak konfiguracji.'};
   try{
     setGhDot('syncing');
     const headers={'Accept':'application/vnd.github.v3+json'};
     if(ghConfig.token) headers['Authorization']=`token ${ghConfig.token}`;
     const res=await fetch(`https://api.github.com/repos/${encodeURIComponent(ghConfig.owner)}/${encodeURIComponent(ghConfig.repo)}/contents/${ghConfig.path}`,{headers});
-    if(res.status===404){ghSha=null;setGhDot('synced');return {ok:true,isNew:true};}
-    if(!res.ok){setGhDot('error');return {ok:false};}
+    if(res.status===404){
+      // Check if it's 404 for file or for repo
+      const repoRes=await fetch(`https://api.github.com/repos/${encodeURIComponent(ghConfig.owner)}/${encodeURIComponent(ghConfig.repo)}`,{headers});
+      if(!repoRes.ok){setGhDot('error');return {ok:false,errMsg:`Repozytorium nie znalezione (${repoRes.status}). Sprawdź owner/repo.`};}
+      ghSha=null;setGhDot('synced');return {ok:true,isNew:true};
+    }
+    if(res.status===401){setGhDot('error');return {ok:false,errMsg:'Token nieprawidłowy lub wygasł (401). Wygeneruj nowy PAT.'};}
+    if(res.status===403){setGhDot('error');return {ok:false,errMsg:'Brak uprawnień (403). Token musi mieć zakres public_repo lub repo.'};}
+    if(!res.ok){setGhDot('error');return {ok:false,errMsg:`Błąd GitHub API: ${res.status}.`};}
     const data=await res.json();
     ghSha=data.sha;
     const parsed=JSON.parse(_b64decode(data.content));
     setGhDot('synced');
     return {ok:true,isNew:false,state:migrateData(parsed)};
-  }catch(e){console.warn('GH load:',e);setGhDot('error');return {ok:false};}
+  }catch(e){console.warn('GH load:',e);setGhDot('error');return {ok:false,errMsg:'Błąd sieci — sprawdź połączenie.'};}
 }
 
 async function saveToGitHub(){
@@ -1986,7 +1993,7 @@ async function connectGitHub(){
   document.getElementById('ghStatusMsg').textContent='Łączenie...';
   const result=await loadFromGitHub();
   if(!result.ok){
-    document.getElementById('ghStatusMsg').textContent='❌ Błąd połączenia — sprawdź dane i token.';
+    document.getElementById('ghStatusMsg').textContent='❌ '+(result.errMsg||'Błąd połączenia — sprawdź dane i token.');
     setGhDot('error');return;
   }
   if(result.isNew){
