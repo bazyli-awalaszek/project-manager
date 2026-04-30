@@ -524,6 +524,27 @@ body{
 /* PDF export button */
 .btn-pdf-export{background:none;border:1px solid var(--border2);border-radius:4px;color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.04em;cursor:pointer;padding:3px 8px;opacity:.5;transition:opacity .1s;}
 .btn-pdf-export:hover{opacity:1;color:var(--blue);border-color:var(--blue);}
+/* GitHub sync */
+.btn-gh-sync{background:none;border:1px solid var(--border2);border-radius:4px;color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.04em;cursor:pointer;padding:3px 8px;opacity:.5;transition:opacity .1s;display:flex;align-items:center;gap:5px;}
+.btn-gh-sync:hover{opacity:1;color:var(--blue);border-color:var(--blue);}
+.btn-gh-sync.active{opacity:1;}
+.gh-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .2s;}
+.gh-dot.synced{background:var(--green);}
+.gh-dot.syncing{background:var(--gold);animation:gh-blink .7s infinite;}
+.gh-dot.error{background:var(--red);}
+@keyframes gh-blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+#ghModal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;z-index:2000;align-items:center;justify-content:center;}
+#ghModal.open{display:flex;}
+.gh-modal-inner{background:var(--card);border-radius:8px;padding:20px;width:370px;border:1px solid var(--border2);box-shadow:0 8px 32px rgba(0,0,0,.5);}
+.gh-modal-title{font-size:13px;font-weight:700;color:var(--dark);margin-bottom:14px;}
+.gh-field{margin-bottom:10px;}
+.gh-field label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);display:block;margin-bottom:4px;}
+.gh-inp{width:100%;background:#16161e;color:var(--dark);border:1px solid var(--border2);border-radius:4px;padding:5px 8px;font-size:12px;outline:none;box-sizing:border-box;}
+.gh-inp:focus{border-color:var(--blue);}
+.gh-hint{font-size:10px;color:var(--muted);margin-top:5px;line-height:1.5;}
+.gh-hint a{color:var(--blue);}
+.gh-modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;align-items:center;}
+.gh-status-msg{font-size:10px;margin-right:auto;}
 
 /* ── ADD TASK BTN ── */
 .add-task-btn{
@@ -579,6 +600,7 @@ details.done-sec[open] .done-arrow{transform:rotate(90deg);}
       <span id="fileNameLbl" style="color:var(--green);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
       <button id="btnFileDisconnect" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;padding:0 0 0 3px;line-height:1" title="Rozłącz plik">✕</button>
     </div>
+    <button class="btn-gh-sync" id="btnGhSync" title="GitHub Sync — konfiguracja"><span class="gh-dot" id="ghDot"></span>GitHub</button>
     <button class="btn-pdf-export" id="btnExportPdf" title="Eksportuj zadania tygodnia do PDF">📄 PDF</button>
   </div>
 </div>
@@ -722,6 +744,36 @@ details.done-sec[open] .done-arrow{transform:rotate(90deg);}
   </div>
 </div>
 
+<!-- GITHUB SYNC MODAL -->
+<div id="ghModal">
+  <div class="gh-modal-inner">
+    <div class="gh-modal-title">🔄 GitHub Sync</div>
+    <div class="gh-field">
+      <label>Owner (użytkownik / org)</label>
+      <input id="ghOwner" class="gh-inp" type="text" placeholder="np. bazyli-awalaszek">
+    </div>
+    <div class="gh-field">
+      <label>Repozytorium</label>
+      <input id="ghRepo" class="gh-inp" type="text" placeholder="np. project-manager">
+    </div>
+    <div class="gh-field">
+      <label>Ścieżka do pliku JSON</label>
+      <input id="ghPath" class="gh-inp" type="text" placeholder="gamesture-tasks.json">
+    </div>
+    <div class="gh-field">
+      <label>Personal Access Token (PAT) — wymagany do zapisu</label>
+      <input id="ghToken" class="gh-inp" type="password" placeholder="ghp_...">
+      <div class="gh-hint">Token z uprawnieniem <strong>repo</strong> (lub <strong>public_repo</strong> dla publicznych repozytoriów). Bez tokenu dane są tylko do odczytu.<br>Wygeneruj: GitHub → Settings → Developer settings → Personal access tokens</div>
+    </div>
+    <div class="gh-modal-btns">
+      <span class="gh-status-msg" id="ghStatusMsg"></span>
+      <button id="ghModalDisconnect" class="btn btn-sm btn-secondary">Rozłącz</button>
+      <button id="ghModalClose" class="btn btn-sm btn-secondary">Anuluj</button>
+      <button id="ghModalSave" class="btn btn-sm btn-primary">Połącz</button>
+    </div>
+  </div>
+</div>
+
 <!-- CONTEXT MENU -->
 <div id="ctxMenu" class="ctx-menu">
   <div class="ctx-item" id="ctxEditTitle">✏️ Edytuj tytuł</div>
@@ -799,6 +851,7 @@ async function saveToFile(){
 function save(){
   localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
   if(fileHandle) saveToFile();
+  scheduleGhSave();
 }
 
 async function loadFromFile(h){
@@ -1830,6 +1883,134 @@ function seedDailyTasks(){
 }
 
 // ═══════════════════════════════════════
+// GITHUB SYNC
+// ═══════════════════════════════════════
+const GH_CONFIG_KEY='tm-gh-config';
+let ghConfig={owner:'',repo:'',path:'gamesture-tasks.json',token:''};
+let ghSha=null,ghSaveTimer=null;
+
+function loadGhConfig(){
+  try{const c=JSON.parse(localStorage.getItem(GH_CONFIG_KEY)||'null');if(c)ghConfig={...ghConfig,...c};}catch(_){}
+}
+function persistGhConfig(){localStorage.setItem(GH_CONFIG_KEY,JSON.stringify(ghConfig));}
+
+function setGhDot(s){
+  const dot=document.getElementById('ghDot');if(!dot)return;
+  dot.className='gh-dot'+(s&&s!=='off'?' '+s:'');
+  const btn=document.getElementById('btnGhSync');
+  if(btn) btn.classList.toggle('active',s!=='off'&&s!=='');
+}
+
+function _b64encode(str){
+  const bytes=new TextEncoder().encode(str);
+  let bin='';for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+function _b64decode(b64){
+  const bin=atob(b64.replace(/\n/g,''));
+  const bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+async function loadFromGitHub(){
+  if(!ghConfig.owner||!ghConfig.repo||!ghConfig.path) return {ok:false};
+  try{
+    setGhDot('syncing');
+    const headers={'Accept':'application/vnd.github.v3+json'};
+    if(ghConfig.token) headers['Authorization']=`token ${ghConfig.token}`;
+    const res=await fetch(`https://api.github.com/repos/${encodeURIComponent(ghConfig.owner)}/${encodeURIComponent(ghConfig.repo)}/contents/${ghConfig.path}`,{headers});
+    if(res.status===404){ghSha=null;setGhDot('synced');return {ok:true,isNew:true};}
+    if(!res.ok){setGhDot('error');return {ok:false};}
+    const data=await res.json();
+    ghSha=data.sha;
+    const parsed=JSON.parse(_b64decode(data.content));
+    setGhDot('synced');
+    return {ok:true,isNew:false,state:migrateData(parsed)};
+  }catch(e){console.warn('GH load:',e);setGhDot('error');return {ok:false};}
+}
+
+async function saveToGitHub(){
+  if(!ghConfig.owner||!ghConfig.repo||!ghConfig.path||!ghConfig.token) return;
+  setGhDot('syncing');
+  try{
+    const content=_b64encode(JSON.stringify(state,null,2));
+    const body={message:'Update tasks',content};
+    if(ghSha) body.sha=ghSha;
+    const res=await fetch(`https://api.github.com/repos/${encodeURIComponent(ghConfig.owner)}/${encodeURIComponent(ghConfig.repo)}/contents/${ghConfig.path}`,{
+      method:'PUT',
+      headers:{'Authorization':`token ${ghConfig.token}`,'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+    if(res.ok){
+      const data=await res.json();
+      ghSha=data.content.sha;
+      setGhDot('synced');
+    }else{
+      const err=await res.json().catch(()=>({}));
+      console.warn('GH save error:',err);
+      if(res.status===409){
+        // Conflict — re-fetch SHA and retry once
+        const r2=await fetch(`https://api.github.com/repos/${encodeURIComponent(ghConfig.owner)}/${encodeURIComponent(ghConfig.repo)}/contents/${ghConfig.path}`,{headers:{'Authorization':`token ${ghConfig.token}`}});
+        if(r2.ok){const d2=await r2.json();ghSha=d2.sha;scheduleGhSave();}
+      }
+      setGhDot('error');
+    }
+  }catch(e){console.warn('GH save:',e);setGhDot('error');}
+}
+
+function scheduleGhSave(){
+  if(!ghConfig.token||!ghConfig.owner||!ghConfig.repo) return;
+  clearTimeout(ghSaveTimer);
+  ghSaveTimer=setTimeout(saveToGitHub,3000);
+}
+
+function openGhModal(){
+  document.getElementById('ghOwner').value=ghConfig.owner;
+  document.getElementById('ghRepo').value=ghConfig.repo;
+  document.getElementById('ghPath').value=ghConfig.path;
+  document.getElementById('ghToken').value=ghConfig.token;
+  document.getElementById('ghStatusMsg').textContent='';
+  document.getElementById('ghModal').classList.add('open');
+}
+function closeGhModal(){document.getElementById('ghModal').classList.remove('open');}
+
+async function connectGitHub(){
+  const owner=document.getElementById('ghOwner').value.trim();
+  const repo=document.getElementById('ghRepo').value.trim();
+  const path=document.getElementById('ghPath').value.trim()||'gamesture-tasks.json';
+  const token=document.getElementById('ghToken').value.trim();
+  if(!owner||!repo){document.getElementById('ghStatusMsg').textContent='⚠ Podaj owner i repo.';return;}
+  ghConfig={owner,repo,path,token};
+  persistGhConfig();
+  document.getElementById('ghStatusMsg').textContent='Łączenie...';
+  const result=await loadFromGitHub();
+  if(!result.ok){
+    document.getElementById('ghStatusMsg').textContent='❌ Błąd połączenia — sprawdź dane i token.';
+    setGhDot('error');return;
+  }
+  if(result.isNew){
+    // Plik nie istnieje na GitHub — wgraj obecne dane
+    document.getElementById('ghStatusMsg').textContent='Tworzenie pliku na GitHub...';
+    await saveToGitHub();
+  }else{
+    // Plik istnieje — załaduj dane z GitHub
+    state=result.state;
+    save();
+    renderApp();
+  }
+  closeGhModal();
+}
+
+function disconnectGitHub(){
+  ghConfig={owner:'',repo:'',path:'gamesture-tasks.json',token:''};
+  ghSha=null;
+  persistGhConfig();
+  setGhDot('off');
+  closeGhModal();
+}
+
+// ═══════════════════════════════════════
 // PDF EXPORT
 // ═══════════════════════════════════════
 function exportToPdf(){
@@ -1932,6 +2113,12 @@ function initListeners(){
   document.getElementById('atSave').addEventListener('click',saveNewTask);
   document.getElementById('btnFileDisconnect').addEventListener('click',disconnectFile);
   document.getElementById('btnExportPdf').addEventListener('click',exportToPdf);
+  document.getElementById('btnGhSync').addEventListener('click',openGhModal);
+  document.getElementById('ghModalSave').addEventListener('click',connectGitHub);
+  document.getElementById('ghModalClose').addEventListener('click',closeGhModal);
+  document.getElementById('ghModalDisconnect').addEventListener('click',disconnectGitHub);
+  document.getElementById('ghModal').addEventListener('click',e=>{if(e.target.id==='ghModal')closeGhModal();});
+  document.getElementById('ghToken').addEventListener('keydown',e=>{if(e.key==='Enter')connectGitHub();if(e.key==='Escape')closeGhModal();});
   document.getElementById('globalQlBar').addEventListener('click',e=>{
     const btn=e.target.closest('[data-action]');if(!btn)return;
     const action=btn.dataset.action,qlId=btn.dataset.qlId;
@@ -2350,17 +2537,31 @@ function initListeners(){
 // ═══════════════════════════════════════
 async function init(){
   currentWeekKey=isoWeekKey(new Date());
+  loadGhConfig();
+
+  // Try GitHub sync first
+  if(ghConfig.owner&&ghConfig.repo){
+    const result=await loadFromGitHub();
+    if(result.ok&&!result.isNew&&result.state){
+      state=result.state;
+      if(!state.games.length){state.games=DEFAULT_GAMES.map(g=>({...g}));}
+      rolloverIncompleteTasks();seedDailyTasks();seedRecurringTasks();
+      save();updateFileUI();initListeners();renderApp();return;
+    }
+  }
+
+  // Fallback: file handle or localStorage
   const savedHandle=await idbLoadHandle();
   if(savedHandle){
     const perm=await savedHandle.queryPermission({mode:'readwrite'});
     if(perm==='granted'){
       try{state=await loadFromFile(savedHandle);fileHandle=savedHandle;}
-      catch(err){console.warn('Could not load from file, falling back to localStorage',err);state=loadAndMigrate();}
-    } else {
-      fileHandle=savedHandle; // remember handle for later reconnect
+      catch(err){console.warn('File load failed, using localStorage',err);state=loadAndMigrate();}
+    }else{
+      fileHandle=savedHandle;
       state=loadAndMigrate();
     }
-  } else {
+  }else{
     state=loadAndMigrate();
   }
   if(!state.games.length){state.games=DEFAULT_GAMES.map(g=>({...g}));save();}
