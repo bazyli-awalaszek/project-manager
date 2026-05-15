@@ -31,7 +31,7 @@
       "note": "",
       "status": "active",
       "priority": false,
-      "weekKey": "2026-W18",
+      "weekKey": "2026-W20",
       "order": 0,
       "attachments": [],
       "subtasks": [
@@ -77,7 +77,7 @@
       "note": "",
       "status": "active",
       "priority": false,
-      "weekKey": "2026-W18",
+      "weekKey": "2026-W20",
       "order": 0,
       "attachments": [],
       "subtasks": [
@@ -118,12 +118,57 @@
       "note": "",
       "status": "active",
       "priority": false,
-      "weekKey": "2026-W18",
+      "weekKey": "2026-W20",
       "order": 1,
       "attachments": [],
       "subtasks": [],
       "link": null,
       "links": []
+    },
+    {
+      "id": "mp6k2u0ps7kz",
+      "game": "Ogólne",
+      "title": "DAILY BREAD",
+      "date": "2026-05-15",
+      "note": "",
+      "status": "active",
+      "priority": false,
+      "weekKey": "2026-W20",
+      "order": 0,
+      "attachments": [],
+      "subtasks": [
+        {
+          "id": "mp6k2u0pi0tj",
+          "title": "Morning Support Check",
+          "done": false
+        },
+        {
+          "id": "mp6k2u0pgbma",
+          "title": "TG refunds check",
+          "done": false
+        },
+        {
+          "id": "mp6k2u0p7by5",
+          "title": "FB posts Accept",
+          "done": false
+        },
+        {
+          "id": "mp6k2u0pice3",
+          "title": "FB/DC dms check",
+          "done": false
+        },
+        {
+          "id": "mp6k2u0pjbiz",
+          "title": "12:00 Support Check",
+          "done": false
+        },
+        {
+          "id": "mp6k2u0pvg1z",
+          "title": "Store Reviews",
+          "done": false
+        }
+      ],
+      "link": null
     }
   ],
   "quicklinks": [
