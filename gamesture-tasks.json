@@ -31,7 +31,7 @@
       "note": "",
       "status": "active",
       "priority": false,
-      "weekKey": "2026-W20",
+      "weekKey": "2026-W21",
       "order": 0,
       "attachments": [],
       "subtasks": [
@@ -77,7 +77,7 @@
       "note": "",
       "status": "active",
       "priority": false,
-      "weekKey": "2026-W20",
+      "weekKey": "2026-W21",
       "order": 0,
       "attachments": [],
       "subtasks": [
@@ -118,7 +118,7 @@
       "note": "",
       "status": "active",
       "priority": false,
-      "weekKey": "2026-W20",
+      "weekKey": "2026-W21",
       "order": 1,
       "attachments": [],
       "subtasks": [],
@@ -133,7 +133,7 @@
       "note": "",
       "status": "active",
       "priority": false,
-      "weekKey": "2026-W20",
+      "weekKey": "2026-W21",
       "order": 0,
       "attachments": [],
       "subtasks": [
@@ -179,12 +179,57 @@
       "note": "",
       "status": "active",
       "priority": false,
-      "weekKey": "2026-W20",
+      "weekKey": "2026-W21",
       "order": 2,
       "attachments": [],
       "subtasks": [],
       "link": null,
       "links": []
+    },
+    {
+      "id": "mpaucdyistcp",
+      "game": "Ogólne",
+      "title": "DAILY BREAD",
+      "date": "2026-05-18",
+      "note": "",
+      "status": "active",
+      "priority": false,
+      "weekKey": "2026-W21",
+      "order": 0,
+      "attachments": [],
+      "subtasks": [
+        {
+          "id": "mpaucdyifyb3",
+          "title": "Morning Support Check",
+          "done": false
+        },
+        {
+          "id": "mpaucdyirud0",
+          "title": "TG refunds check",
+          "done": false
+        },
+        {
+          "id": "mpaucdyihhki",
+          "title": "FB posts Accept",
+          "done": false
+        },
+        {
+          "id": "mpaucdyieui9",
+          "title": "FB/DC dms check",
+          "done": false
+        },
+        {
+          "id": "mpaucdyi53bs",
+          "title": "12:00 Support Check",
+          "done": false
+        },
+        {
+          "id": "mpaucdyiitss",
+          "title": "Store Reviews",
+          "done": false
+        }
+      ],
+      "link": null
     }
   ],
   "quicklinks": [
